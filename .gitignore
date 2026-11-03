@@ -1,0 +1,12 @@
+# Course materials (instructor's file, not ours to publish)
+Design, Build, Ship - Week 5 - Project Proposal.pdf
+
+# OS and editor noise
+.DS_Store
+Thumbs.db
+~$*
+
+# Secrets for the app later
+.env*
+.vercel
+node_modules/
