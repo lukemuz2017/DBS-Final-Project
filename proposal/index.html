@@ -5,41 +5,42 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Runway: Project Proposal</title>
   <meta name="description" content="A personal cash forecasting, liquidity and planning dashboard for people with steady or irregular income.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg: #fbfaf7;
+      color-scheme: light;
+      --bg: #fdf9f3;
       --surface: #ffffff;
-      --text: #1d2430;
-      --muted: #5b6573;
-      --line: #e3e0d8;
-      --accent: #1f6f5c;
-      --accent-soft: #e4f1ec;
-      --warn: #b4541f;
-      --warn-soft: #fbeadf;
-      --band: #cfe5dc;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #12161b;
-        --surface: #1a2027;
-        --text: #e7eaee;
-        --muted: #9aa4b1;
-        --line: #2c343e;
-        --accent: #5cc2a3;
-        --accent-soft: #1d3a32;
-        --warn: #f0a070;
-        --warn-soft: #3d2a1e;
-        --band: #2a4a40;
-      }
+      --text: #22303c;
+      --muted: #627080;
+      --line: #ece4d8;
+      --accent: #12806a;
+      --accent-soft: #e2f4ee;
+      --warn: #d0632b;
+      --warn-soft: #fdece2;
+      --band: #c9eadf;
+      --sun: #ffd98a;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       background: var(--bg);
       color: var(--text);
-      font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, sans-serif;
+      font: 17px/1.65 "Nunito Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
-    main { max-width: 760px; margin: 0 auto; padding: 56px 16px 80px; }
+    .hero {
+      background:
+        radial-gradient(circle at 85% 20%, var(--sun) 0, transparent 28%),
+        linear-gradient(160deg, #e6f6f0 0%, #fdf3e6 70%, var(--bg) 100%);
+      border-bottom: 1px solid var(--line);
+    }
+    .hero-inner { max-width: 760px; margin: 0 auto; padding: 64px 16px 48px; }
+    main { max-width: 760px; margin: 0 auto; padding: 8px 16px 80px; }
+    h1, h2, h3 { font-family: "Fraunces", Georgia, serif; font-weight: 700; }
+    main > h2:first-child { border-top: 0; margin-top: 40px; padding-top: 0; }
+    .card { box-shadow: 0 1px 2px rgba(60, 40, 10, .04), 0 6px 20px rgba(60, 40, 10, .05); }
     .eyebrow {
       font-size: 13px; font-weight: 700; letter-spacing: .12em;
       text-transform: uppercase; color: var(--accent); margin: 0 0 8px;
@@ -91,6 +92,15 @@
     .h.flag .band::after { background: var(--warn); }
     .note { font-size: 13px; color: var(--muted); margin-top: 10px; }
 
+    .spectrum {
+      height: 10px; border-radius: 5px;
+      background: linear-gradient(90deg, var(--warn), var(--accent));
+    }
+    .spectrum-labels {
+      display: flex; justify-content: space-between;
+      font-size: 13px; font-weight: 700; color: var(--muted); margin: 6px 0 10px;
+    }
+    .spectrum-examples { margin: 0; font-size: 15px; }
     .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .pill {
       display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 10px;
@@ -112,12 +122,13 @@
   </style>
 </head>
 <body>
+<header class="hero">
+  <div class="hero-inner">
+    <p class="eyebrow">Design, Build, Ship · Project Proposal</p>
+    <h1>Runway</h1>
+    <p class="lede">A cash forecasting and liquidity dashboard that shows people with steady <em>or</em> irregular income where their money will be over the next week to the next year. It also helps them plan big decisions without hiring a financial advisor.</p>  </div>
+</header>
 <main>
-
-  <p class="eyebrow">Design, Build, Ship · Project Proposal</p>
-  <h1>Runway</h1>
-  <p class="lede">A cash forecasting and liquidity dashboard that shows people with steady <em>or</em> irregular income where their money will be over the next week to the next year. It also helps them plan big decisions without hiring a financial advisor.</p>
-  <p class="meta">Focus: Holistic Journey · v1 Nov 17 · v2 Dec 1</p>
 
   <h2>The problem</h2>
   <p>Budget apps look backward. They tell you whether you met last month's budget, as a yes or a no. They don't tell you whether you'll be short in three weeks, how much cash you can safely invest, or whether you can afford a big purchase in March. Companies and funds answer those questions with treasury tools: rolling cash forecasts, liquidity tiers and stress tests. Individuals mostly get them through a financial advisor, or through platforms like Fidelity and Northwestern Mutual that assume a steady paycheck.</p>
@@ -139,31 +150,35 @@
   </div>
 
   <h2>Who it's for</h2>
-  <div class="grid2">
-    <div class="card">
-      <span class="pill">Irregular income</span>
-      <p><strong>The freelancer or gig worker</strong> whose income arrives in lumps. They need to know whether they'll make rent before the next client pays.</p>
-    </div>
-    <div class="card">
-      <span class="pill">Established income</span>
-      <p><strong>The well-paid professional</strong>, such as a banker, who has cash, investments and goals spread across several accounts and wants to plan without handing it to an advisor.</p>
-    </div>
-  </div>
-  <p>Both need the same thing: one forward-looking view of cash across every account, built from <em>their</em> income streams, current assets and goals.</p>
+  <p><strong>Anyone who wants to know where their money is going next</strong>, whatever their income looks like. Runway is built for the whole range:</p>
+  <div class="card">
+    <div class="spectrum" aria-hidden="true"></div>
+    <div class="spectrum-labels">
+      <span>Irregular income</span>
+      <span>Steady income</span>
+    </div>  </div>
+  <p>Everyone on that range needs the same thing: one forward-looking view of cash across every account, built from <em>their</em> income streams, current assets and goals. The app adapts to the person rather than assuming a steady paycheck. Lumpy income widens the forecast range; steady income narrows it.</p>
+  <h3>Accessibility is part of the point</h3>
+  <ul>
+    <li><strong>No advisor required.</strong> The planning tools wealthier clients get from an advisor or a firm like Fidelity, available to anyone.</li>
+    <li><strong>Free to use.</strong> No account minimums and no assets-under-management fees.</li>
+    <li><strong>Plain language.</strong> Every forecast and suggestion explains itself in everyday words, with no finance jargon required.</li>
+    <li><strong>Usable by everyone.</strong> Readable on a phone, works with a keyboard and screen reader, and charts that don't rely on color alone.</li>
+  </ul>
 
   <h2>What users told me</h2>
-  <p class="muted">I interviewed three MBA students.</p>
+  <p class="muted">I interviewed a freelancer and two MBA students.</p>
   <blockquote>
-    <p>Budget forecasts are almost backward-looking, and always just a binary: you met or didn't meet your budget.</p>
-    <cite>Interviewee 1, MBA student</cite>
+    <p>"Many of these budget apps don't really take into account how variable my income is, and it's difficult for me to think about much runway I've built up after I complete a job as a result."</p>
+    <cite>Freelancer</cite>
   </blockquote>
   <blockquote>
-    <p>I want to be able to plan without a financial advisor. These tools exist, maybe on Northwestern Mutual or Fidelity, but they aren't always accessible to people without steady incomes.</p>
-    <cite>Interviewee 2, MBA student</cite>
+    <p>"A lot of these tools exist on financial advisor websites, but I don't want to deal with financial advisors. I have the time, so I want to manage my long-term finances myself."</p>
+    <cite>MBA student</cite>
   </blockquote>
   <blockquote>
-    <p>Forecasting cash, and asking the app whether you can or should make a large purchase, isn't really available across platforms.</p>
-    <cite>Interviewee 3, MBA student</cite>
+    <p>"Budget forecasts are almost backward-looking, and always just a binary: you met or didn't meet your budget."</p>
+    <cite>MBA student</cite>
   </blockquote>
   <p>Their answers match what I found in research. Apps that do forecast (PocketSmith, Simplifi, Monarch) project recurring bills as a single line. Cash sweeps (Wealthfront, Betterment) are fixed rules inside one provider. Stress tests exist only in retirement planners. Nothing combines them across linked accounts.</p>
 
