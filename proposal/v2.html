@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Runway Proposal v2</title>
+  <meta name="description" content="A personal cash forecasting, liquidity and planning dashboard for people with steady or irregular income.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #fdf9f3;
+      --surface: #ffffff;
+      --text: #22303c;
+      --muted: #627080;
+      --line: #ece4d8;
+      --accent: #12806a;
+      --accent-soft: #e2f4ee;
+      --warn: #d0632b;
+      --warn-soft: #fdece2;
+      --band: #c9eadf;
+      --sun: #ffd98a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 17px/1.65 "Nunito Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .hero {
+      background:
+        radial-gradient(circle at 85% 20%, var(--sun) 0, transparent 28%),
+        linear-gradient(160deg, #e6f6f0 0%, #fdf3e6 70%, var(--bg) 100%);
+      border-bottom: 1px solid var(--line);
+    }
+    .hero-inner { max-width: 760px; margin: 0 auto; padding: 64px 16px 48px; }
+    main { max-width: 760px; margin: 0 auto; padding: 8px 16px 80px; }
+    h1, h2, h3 { font-family: "Fraunces", Georgia, serif; font-weight: 700; }
+    main > h2:first-child { border-top: 0; margin-top: 40px; padding-top: 0; }
+    .card { box-shadow: 0 1px 2px rgba(60, 40, 10, .04), 0 6px 20px rgba(60, 40, 10, .05); }
+    .eyebrow {
+      font-size: 13px; font-weight: 700; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--accent); margin: 0 0 8px;
+    }
+    h1 { font-size: clamp(36px, 7vw, 52px); line-height: 1.05; margin: 0 0 16px; letter-spacing: -.02em; }
+    .lede { font-size: 21px; line-height: 1.45; margin: 0 0 8px; }
+    .meta { color: var(--muted); font-size: 14px; margin: 0; }
+    h2 {
+      font-size: 22px; margin: 56px 0 12px; padding-top: 24px;
+      border-top: 1px solid var(--line); letter-spacing: -.01em;
+    }
+    h3 { font-size: 17px; margin: 24px 0 6px; }
+    p, li { margin: 0 0 10px; }
+    ul, ol { padding-left: 22px; margin: 0 0 12px; }
+    .muted { color: var(--muted); }
+    .card {
+      background: var(--surface); border: 1px solid var(--line);
+      border-radius: 12px; padding: 18px 20px; margin: 16px 0;
+    }
+    blockquote {
+      margin: 12px 0; padding: 12px 16px; border-left: 3px solid var(--accent);
+      background: var(--surface); border-radius: 0 10px 10px 0;
+    }
+    blockquote p { margin: 0 0 4px; }
+    blockquote cite { font-style: normal; font-size: 14px; color: var(--muted); }
+
+    /* Illustrative dashboard */
+    .dash-head { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+    .dash-head strong { font-size: 15px; }
+    .dash-head span { font-size: 13px; color: var(--muted); }
+    .horizons {
+      display: grid; grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px; margin-top: 14px;
+    }
+    .h {
+      border: 1px solid var(--line); border-radius: 10px; padding: 10px 8px;
+      text-align: center; background: var(--bg);
+    }
+    .h .t { font-size: 12px; font-weight: 700; color: var(--muted); }
+    .h .v { font-size: 17px; font-weight: 700; margin-top: 2px; }
+    .h .r { font-size: 11px; color: var(--muted); }
+    .h.flag { border-color: var(--warn); background: var(--warn-soft); }
+    .h.flag .v { color: var(--warn); }
+    .band { height: 6px; border-radius: 3px; background: var(--band); margin: 8px 4px 0; position: relative; }
+    .band::after {
+      content: ""; position: absolute; top: -2px; width: 4px; height: 10px;
+      border-radius: 2px; background: var(--accent); left: var(--mid, 50%);
+    }
+    .h.flag .band::after { background: var(--warn); }
+    .note { font-size: 13px; color: var(--muted); margin-top: 10px; }
+
+    .spectrum {
+      height: 10px; border-radius: 5px;
+      background: linear-gradient(90deg, var(--warn), var(--accent));
+    }
+    .spectrum-labels {
+      display: flex; justify-content: space-between;
+      font-size: 13px; font-weight: 700; color: var(--muted); margin: 6px 0 10px;
+    }
+    .spectrum-examples { margin: 0; font-size: 15px; }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .pill {
+      display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 10px;
+      border-radius: 999px; background: var(--accent-soft); color: var(--accent);
+      margin-bottom: 6px;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 15px; margin: 8px 0 12px; }
+    th, td { text-align: left; vertical-align: top; padding: 9px 10px; border-bottom: 1px solid var(--line); }
+    th { font-size: 13px; color: var(--muted); font-weight: 700; }
+    td:first-child { white-space: nowrap; font-weight: 600; }
+    code { font-size: 14px; background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; }
+    footer { margin-top: 56px; font-size: 13px; color: var(--muted); }
+
+    .runway { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+    .gauge { height: 10px; border-radius: 5px; background: var(--line); margin-top: 8px; overflow: hidden; }
+    .gauge span { display: block; height: 100%; background: var(--accent); border-radius: 5px; }
+    .version-note { font-size: 14px; color: var(--muted); margin: 12px 0 0; }
+    @media (max-width: 640px) {
+      .horizons { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+      .grid2 { grid-template-columns: 1fr; }
+      td:first-child { white-space: normal; }
+    }
+  </style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero-inner">
+    <p class="eyebrow">Design, Build, Ship · Project Proposal · Version 2</p>
+    <h1>Runway</h1>
+    <p class="lede">A 12-week cash forecast for people whose income is lumpy, starting with freelancers and students. It shows the range, explains why you'll come up short, and puts your taxes and tuition on the calendar. When your income steadies, it grows into a long-term goal planner.</p>
+    <p class="version-note">Revised Nov 13, 2026 after competitor research. <a href="/proposal/index.html">See the original proposal</a>.</p>
+  </div>
+</header>
+<main>
+
+  <h2>The problem</h2>
+  <p>Budget apps look backward. They tell you whether you met last month's budget, as a yes or a no. They don't tell you whether you'll be short in three weeks, how long your savings would last if the work dried up, or whether you can afford a big purchase in March. Companies answer those questions with treasury tools: rolling cash forecasts, liquidity tiers and stress tests. Individuals mostly get them through a financial advisor, or through planning tools that assume a steady paycheck.</p>
+
+  <div class="card">
+    <div class="dash-head">
+      <strong>Next 12 weeks: lowest balance in each two-week window</strong>
+      <span>Illustrative mock-up · range = low / base / high</span>
+    </div>
+    <div class="horizons">
+      <div class="h"><div class="t">Wk 1–2</div><div class="v">$3.4k</div><div class="r">3.1–3.6k</div><div class="band" style="--mid:55%"></div></div>
+      <div class="h"><div class="t">Wk 3–4</div><div class="v">$2.6k</div><div class="r">2.0–3.1k</div><div class="band" style="--mid:52%"></div></div>
+      <div class="h"><div class="t">Wk 5–6</div><div class="v">$2.1k</div><div class="r">1.2–2.9k</div><div class="band" style="--mid:50%"></div></div>
+      <div class="h"><div class="t">Wk 7–8</div><div class="v">$1.8k</div><div class="r">0.6–2.9k</div><div class="band" style="--mid:48%"></div></div>
+      <div class="h flag"><div class="t">Wk 9–10</div><div class="v">$0.5k</div><div class="r">−0.3–1.6k</div><div class="band" style="--mid:45%"></div></div>
+      <div class="h"><div class="t">Wk 11–12</div><div class="v">$1.9k</div><div class="r">0.2–3.6k</div><div class="band" style="--mid:50%"></div></div>
+    </div>
+    <p class="note"><strong>Why weeks 9–10 are flagged:</strong> your Jan 15 estimated tax payment (about $2,400) and rent land before your biggest client's invoice is likely paid (they usually pay 3–5 weeks late). In the low case you dip to −$300. Suggested fix: move $800 from savings to checking by Jan 12.</p>
+    <div class="runway">
+      <div class="dash-head">
+        <strong>Runway if income stopped today: 11 weeks</strong>
+        <span>Your target: 4 months (17 weeks)</span>
+      </div>
+      <div class="gauge" role="img" aria-label="11 of 17 target weeks of runway"><span style="width:65%"></span></div>
+    </div>
+  </div>
+
+  <h2>Who it's for</h2>
+  <p><strong>Freelancers and students first.</strong> Their income arrives in lumps, often with no tax withheld, so "will I be short on the 14th?" is a real weekly question. But people's income changes: students graduate into salaried jobs, and freelancers take full-time roles. Runway grows with them instead of becoming useless the day the paychecks get regular.</p>
+  <p>At sign-up you pick a starting profile. It sets defaults (what onboarding asks, which cards you see first, whether tax set-asides are on), not a separate app. You can switch anytime. Under the hood the forecast works per income stream, so mixed income (a stipend plus freelance gigs, or a salary plus a side business) just works.</p>
+  <table>
+    <thead><tr><th></th><th>Freelance</th><th>Student</th><th>Steady income</th></tr></thead>
+    <tbody>
+      <tr><td>Onboarding asks</td><td>Clients, how late they usually pay, tax set-aside %</td><td>Stipend or TA pay, payment schedule, tuition dates, summer funding</td><td>Paycheck amount and schedule</td></tr>
+      <tr><td>Cards shown first</td><td>Quarterly taxes, "lose my biggest client," per-client confidence</td><td>Summer gap, fellowship estimated taxes, tuition dates</td><td>Goals, positioning suggestions</td></tr>
+      <tr><td>Forecast range</td><td>Wide</td><td>Narrow, with seasonal gaps</td><td>Narrow</td></tr>
+    </tbody>
+  </table>
+  <p><strong>Graduation prompt.</strong> When Runway sees regular paychecks for three months, it asks: "Your income looks steady now. Switch to the steady view?" The 12-week forecast fades into the background and your long-term goals move to the front.</p>
+
+  <h3>A forecast that explains itself</h3>
+  <p>Financial education works best as a short rule of thumb at the moment of a decision, not as a course (Fernandes, Lynch &amp; Netemeyer 2014; Kaiser et al. 2022). So Runway teaches through your own numbers instead of lessons or quizzes:</p>
+  <ul>
+    <li>Every shortfall flag names what causes it.</li>
+    <li>Every "move $X" suggestion comes with a one-line rule, such as "keep one low-case month in checking."</li>
+    <li>Every stress test ends with one takeaway.</li>
+    <li>Quarterly tax payments appear on the forecast with a plain explanation of what they are and why you owe them.</li>
+  </ul>
+
+  <h3>Accessibility is part of the point</h3>
+  <ul>
+    <li><strong>No advisor required.</strong> The planning tools wealthier clients get from an advisor, available to anyone.</li>
+    <li><strong>Free to use.</strong> No account minimums and no assets-under-management fees.</li>
+    <li><strong>Plain language.</strong> No finance jargon required. "Runway" and "range" are explained the first time you see them.</li>
+    <li><strong>Usable by everyone.</strong> Readable on a phone, works with a keyboard and screen reader, every chart has a table alternative, and nothing relies on color alone.</li>
+  </ul>
+
+  <h2>What users told me</h2>
+  <p class="muted">I interviewed a freelancer and two MBA students.</p>
+  <blockquote>
+    <p>"Many of these budget apps don't really take into account how variable my income is, and it's difficult for me to think about [how] much runway I've built up after I complete a job as a result."</p>
+    <cite>Freelancer</cite>
+  </blockquote>
+  <blockquote>
+    <p>"A lot of these tools exist on financial advisor websites, but I don't want to deal with financial advisors. I have the time, so I want to manage my long-term finances myself."</p>
+    <cite>MBA student</cite>
+  </blockquote>
+  <blockquote>
+    <p>"Budget forecasts are almost backward-looking, and always just a binary: you met or didn't meet your budget."</p>
+    <cite>MBA student</cite>
+  </blockquote>
+  <p>Their answers match what I found in research (November 2026):</p>
+  <ul>
+    <li><strong>Monarch's</strong> Forecasting projects net worth by calendar year to age 90, on its $199/year Plus tier. It isn't a near-term cash forecast.</li>
+    <li><strong>Copilot</strong> has no forecast. <strong>Simplifi</strong> and <strong>PocketSmith</strong> project a single line with no range, and Simplifi ignores planned spending and goals.</li>
+    <li>The closest match is <strong>Cashcast</strong>, a small freelancer beta with ranges but no bank linking yet.</li>
+  </ul>
+  <p>No app I found shows a near-term range with reasons, puts estimated taxes on a personal forecast, measures runway in weeks, or shows how accurate its own forecasts have been.</p>
+
+  <h2>What it does</h2>
+  <ol>
+    <li><strong>Sign up and pick a starting profile:</strong> freelance, student or steady income.</li>
+    <li><strong>Link accounts.</strong> Connect several bank accounts into one view, with a CSV import as a fallback. Transfers between your own accounts and card payments are netted out so they aren't counted as income or spending.</li>
+    <li><strong>Describe your income streams.</strong> Salary, freelance clients, stipends or bonuses, each with its own timing and confidence. An irregular stream widens the range; a steady one narrows it.</li>
+    <li><strong>See the 12-week forecast.</strong> The lowest balance in each two-week window, shown as a low/base/high range, so a dip between paydays can't hide. Shortfalls are flagged with the reason. Estimated taxes and tuition are added automatically for the profiles that need them.</li>
+    <li><strong>Check your runway.</strong> How many weeks your cash would last if income stopped, against a target you choose. The default is 4 months; the usual guidance is 3–6. Stress tests run "lose my biggest client," "$1,500 car repair" or "summer stipend ends" and show the new number.</li>
+    <li><strong>Plan goals over 1–2 years.</strong> A down payment, a car, the next year of school. The goals view shows whether you're on track at your current savings pace, with a pessimistic and an optimistic version.</li>
+    <li><strong>Position cash.</strong> Set targets for checking, high-yield savings and investments. The app suggests moves such as "move $2,000 from checking to savings; nothing large is due for 3 weeks." You make the transfers yourself.</li>
+    <li><strong>See how accurate it's been.</strong> Runway backtests itself: it forecasts from your data as of 60 days ago and compares that with what actually happened, so the accuracy score is there from day one.</li>
+  </ol>
+  <p class="muted">Stretch goal: an AI assistant that answers "Can I afford a $3,000 trip in March?" by running the forecast and scenarios. The numbers come from the engine, and the model explains them.</p>
+
+  <h2>Focus: Holistic Journey</h2>
+  <p>The value only shows up when the whole path works end to end. A person has to be able to sign up, link accounts, describe their income and goals, see a forecast they believe, and act on it. A beautiful dashboard with fake data, or a clever model nobody can sign up for, would miss the point. I'd rather every step work on the live site with moderate depth than polish one piece in isolation. That's why the AI assistant is a stretch goal, not the core.</p>
+
+  <h2>Roadmap</h2>
+  <table>
+    <thead><tr><th>When</th><th>What I'll build</th></tr></thead>
+    <tbody>
+      <tr><td>Nov 10–13</td><td>Riskiest part first: sign-up with profile choice, the database schema, linking several sandbox banks through Plaid, syncing transactions, netting out transfers between your own accounts, and detecting recurring income and bills.</td></tr>
+      <tr><td>Nov 14–17</td><td>The per-stream forecast engine, the 12-week dashboard with low points, ranges and shortfall reasons, the freelance profile with quarterly tax dates, and the runway gauge. Deployed. <strong>v1 ships Nov 17.</strong></td></tr>
+      <tr><td>Nov 17–23</td><td>Student and steady profiles (onboarding and cards), stress tests, the 1–2 year goals view and backtested accuracy. Test with my interviewees.</td></tr>
+      <tr><td>Nov 24–30</td><td>Real accounts through Teller's development tier, plus CSV import. Cash positioning suggestions, the graduation prompt, and accessibility and onboarding polish. Stretch: the AI assistant with a small eval set.</td></tr>
+      <tr><td>Dec 1</td><td><strong>v2 at the project fair.</strong></td></tr>
+    </tbody>
+  </table>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>In v1 (Nov 17)</h3>
+      <ul>
+        <li>Sign-up, log-in and profile choice</li>
+        <li>Multiple linked accounts (sandbox)</li>
+        <li>Income streams and goals entered by hand</li>
+        <li>12-week range dashboard with shortfall reasons</li>
+        <li>Freelance profile with quarterly taxes</li>
+        <li>Runway gauge against a 4-month target</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>In v2 (Dec 1)</h3>
+      <ul>
+        <li>Student and steady-income profiles</li>
+        <li>Stress tests</li>
+        <li>1–2 year goals view</li>
+        <li>Backtested forecast accuracy</li>
+        <li>Real accounts through Teller (dev) and CSV import</li>
+        <li>Cash positioning and the graduation prompt</li>
+        <li class="muted">Stretch: "Can I afford it?" AI assistant</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>Leaving out</h3>
+  <ul>
+    <li><strong>Moving money for users.</strong> That's money transmission, which needs licenses or a partner bank. Runway recommends; you act.</li>
+    <li><strong>Advice on specific securities.</strong> That would make it an investment adviser. Runway works with cash, not picks.</li>
+    <li><strong>Tax advice.</strong> Runway estimates quarterly payments from a set-aside percentage and shows the IRS due dates. It doesn't prepare or file taxes.</li>
+    <li>Bill pay and a native mobile app.</li>
+  </ul>
+
+  <h3>The most ambitious version</h3>
+  <p>A financial companion from your first stipend to your first house. It learns your real income patterns, keeps a forecast that gets more accurate over time, tells you each week what to do with your cash, and shifts from "will I be short?" to "am I on track?" as your income steadies.</p>
+
+
+  <h2>Tech stack</h2>
+  <table>
+    <thead><tr><th>Piece</th><th>Choice and why</th></tr></thead>
+    <tbody>
+      <tr><td>App</td><td><strong>Next.js on Vercel.</strong> Pages and server routes in one project. Bank API secrets stay in server routes, never in the browser.</td></tr>
+      <tr><td>Data and auth</td><td><strong>Supabase</strong> (Postgres, Auth, row-level security). Financial data needs strict per-user access, and Postgres suits time-series transactions and forecasts.</td></tr>
+      <tr><td>Bank data</td><td><strong>Plaid Sandbox</strong> for v1: free fake banks, for v1: free fake banks. <strong>Teller (development)</strong> for v2: up to 100 real bank logins, free. <strong>CSV import</strong> as a fallback when sync breaks. All three sit behind one shared interface. Recurring detection is my own code (Teller has none), checked against Plaid&#39;s endpoint.</td></tr>
+      <tr><td>Tax and calendar rules</td><td>A small config table: IRS estimated-tax due dates, the default set-aside percentage and the safe-harbor note. No market data is needed: a stress test only changes cash flows.</td></tr>
+      <tr><td>Forecast engine</td><td>Plain TypeScript: each income stream and recurring bill is projected separately, with ranges from that stream&#39;s historical variance, then summed into weekly balances and the low point of each window. The goals view uses a simpler savings-pace projection. It's deterministic so the numbers are explainable and testable.</td></tr>
+      <tr><td>AI (stretch)</td><td><strong>Claude API</strong> with tool use. The model calls <code>forecast()</code> and <code>run_scenario()</code> rather than doing math itself. Evals compare its answers to the engine's output.</td></tr>
+      <tr><td>Charts</td><td><strong>Chart.js</strong>: lightweight, accessible range bands.</td></tr>
+    </tbody>
+  </table>
+  <p><strong>MCP servers:</strong> the Supabase MCP server for schema and migrations (read-only on any real data), and Plaid's sandbox MCP server to generate test users and transactions.</p>
+  <p><strong>CLIs:</strong> Claude Code, the Vercel CLI (deploys, <code>vercel env pull</code>), the Supabase CLI (migrations) and the GitHub CLI (<code>gh</code>).</p>
+  <p class="muted">Everything stays on free tiers: Vercel Hobby, Supabase Free, Plaid Sandbox, Teller dev. The Claude API key will have a hard spending cap and usage alerts.</p>
+
+  <footer>Runway · Design, Build, Ship, MPCS 51238, Autumn 2026 · <a href="https://github.com/lukemuz2017/DBS-Final-Project">GitHub repository</a>. Educational project, not financial advice.</footer>
+</main>
+</body>
+</html>
