@@ -1,0 +1,65 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git branch *)",
+      "Bash(npm run lint *)",
+      "Bash(npm run typecheck *)",
+      "Bash(npm run test *)",
+      "Bash(npm test *)",
+      "Bash(npx vitest *)",
+      "Bash(npx tsc --noEmit *)",
+      "Bash(supabase status *)",
+      "Bash(supabase migration new *)",
+      "Bash(supabase gen types *)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(git merge *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean *)",
+      "Bash(npm install *)",
+      "Bash(supabase db push *)",
+      "Bash(supabase db reset *)",
+      "Bash(vercel env *)",
+      "Edit(.claude/settings.json)",
+      "Edit(.claude/hooks/**)"
+    ],
+    "deny": [
+      "Read(**/.env)",
+      "Read(**/.env.local)",
+      "Read(**/.env.*.local)",
+      "Read(**/.env.production)",
+      "Read(**/certs/**)",
+      "Read(**/*.pem)",
+      "Read(**/*.key)",
+      "Edit(**/.env)",
+      "Edit(**/.env.local)",
+      "Edit(**/.env.*.local)",
+      "Edit(**/.env.production)",
+      "Edit(**/certs/**)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(vercel --prod *)",
+      "Bash(vercel deploy --prod *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/guard.js\"",
+            "shell": "bash",
+            "timeout": 15,
+            "statusMessage": "Checking command against guard rules"
+          }
+        ]
+      }
+    ]
+  }
+}

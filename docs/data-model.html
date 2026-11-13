@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Runway Data Model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Nunito+Sans:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root { color-scheme: light; --bg:#fdf9f3; --text:#22303c; --muted:#627080; --line:#ece4d8; --edge:#cfc4b3;
+    --accent:#12806a; --accent-soft:#e2f4ee; --band:#f0f9f5; --warn:#d0632b; --warn-soft:#fdece2; --ref-soft:#eef0f3;
+    --v2:#9a6a00; --v2-soft:#fdf0d5; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:15px/1.55 "Nunito Sans", "Segoe UI", sans-serif; }
+  main { max-width: 900px; margin: 0 auto; padding: 40px 16px 64px; }
+  h1, h2 { font-family: "Fraunces", Georgia, serif; letter-spacing: -.01em; }
+  h1 { font-size: 36px; margin: 0 0 6px; }
+  h2 { font-size: 22px; margin: 36px 0 10px; padding-top: 18px; border-top: 1px solid var(--line); }
+  h3 { font-size: 16px; margin: 0 0 4px; }
+  .eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); margin: 0 0 6px; }
+  .lede { font-size: 17px; margin: 0 0 4px; } .muted { color: var(--muted); } .small { font-size: 13px; color: var(--muted); margin: 6px 0 0; }
+  code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 12.5px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin: 12px 0; }
+  .diagram { background:#fff; border:1px solid var(--line); border-radius:12px; padding:10px; margin: 12px 0; }
+  .diagram svg { width:100%; height:auto; display:block; }
+  svg text { font-family: "JetBrains Mono", Consolas, monospace; }
+  .bname { font-size: 13px; font-weight: 600; fill: var(--text); } .bname.big { font-size: 15px; }
+  .col { font-size: 11.5px; fill: var(--text); } .typ { font-size: 11px; fill: var(--muted); }
+  .note { font-size: 10.5px; fill: var(--muted); font-family: "Nunito Sans", sans-serif !important; }
+  .colhead { font-size: 13px; font-weight: 700; fill: var(--accent); font-family: "Nunito Sans", sans-serif !important; letter-spacing: .04em; }
+  .pill { font-size: 10.5px; font-weight: 600; } .pv1 { fill: var(--accent); } .pv2 { fill: var(--v2); } .psec { fill: var(--warn); } .pref { fill: var(--muted); }
+  ul { padding-left: 20px; margin: 6px 0; } li { margin: 0 0 6px; }
+  .decisions li strong { color: var(--text); }
+  table { width:100%; border-collapse: collapse; font-size: 13px; margin: 6px 0 0; background:#fff; }
+  th, td { text-align:left; vertical-align: top; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  th { font-size: 11.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  td:first-child { width: 30%; } td:nth-child(2) { width: 18%; color: var(--muted); }
+  .tbl { margin: 22px 0; break-inside: avoid; }
+  .tag { font-family: "Nunito Sans", sans-serif; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; vertical-align: 2px; }
+  .t1 { background: var(--accent-soft); color: var(--accent); } .t2 { background: var(--v2-soft); color: var(--v2); }
+  .ts { background: var(--warn-soft); color: var(--warn); } .tr { background: var(--ref-soft); color: var(--muted); }
+  pre { background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px 12px; font-size:12px; overflow-x:auto; }
+  ol li { margin-bottom: 8px; }
+  @page { size: letter; margin: 0.55in 0.5in; }
+  @media print { main { padding-top: 0; } h2 { break-after: avoid; } tr { break-inside: avoid; } .diagram { break-inside: avoid; } }
+</style></head>
+<body><main>
+  <p class="eyebrow">Runway · Draft for review</p>
+  <h1>Data model</h1>
+  <p class="lede">The tables behind Runway v1 and v2, how they link, and the decisions baked into them.</p>
+  <p class="muted">Postgres on Supabase · drafted Nov 13, 2026 · matches proposal v2</p>
+
+  <h2>Decisions this model assumes</h2>
+  <ul class="decisions">
+    <li><strong>Supabase Auth, not Clerk.</strong> Auth comes with Supabase, and row-level security can check <code>auth.uid()</code> directly. Clerk would mean a second service, text user ids and extra token setup, for no gain on this project.</li>
+    <li><strong>Two Supabase projects: dev and prod.</strong> Claude Code and its MCP server only ever touch dev. Prod holds testers' real bank data in v2.</li>
+    <li><strong>Money is integer cents</strong> (<code>bigint</code>), and <strong>positive = money in</strong>. Providers' own sign conventions are normalized at the edge.</li>
+    <li><strong>Every user table has <code>user_id</code> and row-level security.</strong> Deleting a profile deletes everything below it.</li>
+    <li><strong>Forecasts are stored as runs</strong>, not only computed on the fly. That gives a fast dashboard and makes backtested accuracy possible.</li>
+    <li><strong>Computed, not stored:</strong> two-week windows, positioning suggestions and estimated-tax amounts (unless overridden).</li>
+  </ul>
+
+  <h2>How the tables connect</h2>
+  <div class="diagram"><svg viewBox="0 0 980 815" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagram of Runway's database tables and how they link"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="var(--muted)"/></marker></defs><rect x="20" y="10" width="940" height="72" rx="10" fill="var(--band)" stroke="var(--accent)" stroke-width="1.3"/><text x="36" y="36" class="bname big">profiles</text><text x="120" y="36" class="typ">one row per user · id = the Supabase Auth user id</text><text x="944" y="35" class="pill pv1" text-anchor="end">v1</text><text x="36" y="56" class="col">profile_type · timezone · runway_target_weeks · tax_set_aside_pct · range_confidence · graduation_prompted_at</text><text x="36" y="73" class="note">Every table below has a user_id that points here (not drawn, to keep the picture readable).</text><text x="20" y="112" class="colhead">Bank data</text><text x="355" y="112" class="colhead">What you tell Runway</text><text x="690" y="112" class="colhead">Forecasting</text><path d="M625,315 H688" stroke="var(--muted)" stroke-width="1.3" stroke-dasharray="4 3" fill="none" marker-end="url(#arr)"/><text x="657" y="309" class="note" text-anchor="middle">engine</text><path d="M175,265 V290" stroke="var(--muted)" stroke-width="1.3" fill="none"/><text x="182" y="281.5" class="note">1 : 1</text><path d="M38,265 V390" stroke="var(--muted)" stroke-width="1.3" fill="none"/><text x="43" y="382" class="note">1 → many</text><path d="M155,547 V575" stroke="var(--muted)" stroke-width="1.3" fill="none"/><text x="162" y="565" class="note">1 → many</text><path d="M290,715 H315 V229 H355" stroke="var(--muted)" stroke-width="1.3" fill="none"/><path d="M290,732 H332 V430 H355" stroke="var(--muted)" stroke-width="1.3" fill="none"/><path d="M825,214 V245" stroke="var(--muted)" stroke-width="1.3" fill="none"/><text x="832" y="233.5" class="note">1 → many</text><path d="M825,385 V412" stroke="var(--muted)" stroke-width="1.3" fill="none"/><text x="832" y="402.5" class="note">1 → 12</text><g><rect x="20" y="125" width="270" height="140" rx="8" fill="#fff" stroke="var(--edge)" stroke-width="1.3"/><path d="M21,151 V133 a7,7 0 0 1 7,-7 H282 a7,7 0 0 1 7,7 V151 Z" fill="var(--accent-soft)"/><text x="30" y="143" class="bname">connections</text><text x="280" y="142" class="pill pv1" text-anchor="end">v1</text><text x="30" y="167" class="col">id</text><text x="280" y="167" class="typ" text-anchor="end">uuid</text><text x="30" y="184" class="col">provider</text><text x="280" y="184" class="typ" text-anchor="end">plaid | teller | csv</text><text x="30" y="201" class="col">institution_name</text><text x="280" y="201" class="typ" text-anchor="end">text</text><text x="30" y="218" class="col">status</text><text x="280" y="218" class="typ" text-anchor="end">enum</text><text x="30" y="235" class="col">last_synced_at</text><text x="280" y="235" class="typ" text-anchor="end">timestamptz</text><text x="30" y="252" class="col">sync_cursor</text><text x="280" y="252" class="typ" text-anchor="end">text</text></g><g><rect x="60" y="290" width="230" height="72" rx="8" fill="#fff" stroke="var(--warn)" stroke-width="1.3" stroke-dasharray="5 4"/><path d="M61,316 V298 a7,7 0 0 1 7,-7 H282 a7,7 0 0 1 7,7 V316 Z" fill="var(--warn-soft)"/><text x="70" y="308" class="bname">connection_secrets</text><text x="280" y="307" class="pill psec" text-anchor="end">server</text><text x="70" y="332" class="col">connection_id</text><text x="280" y="332" class="typ" text-anchor="end">uuid</text><text x="70" y="349" class="col">access_token_ciphertext</text><text x="280" y="349" class="typ" text-anchor="end">bytea</text></g><g><rect x="20" y="390" width="270" height="157" rx="8" fill="#fff" stroke="var(--edge)" stroke-width="1.3"/><path d="M21,416 V398 a7,7 0 0 1 7,-7 H282 a7,7 0 0 1 7,7 V416 Z" fill="var(--accent-soft)"/><text x="30" y="408" class="bname">accounts</text><text x="280" y="407" class="pill pv1" text-anchor="end">v1</text><text x="30" y="432" class="col">id</text><text x="280" y="432" class="typ" text-anchor="end">uuid</text><text x="30" y="449" class="col">connection_id</text><text x="280" y="449" class="typ" text-anchor="end">uuid</text><text x="30" y="466" class="col">type</text><text x="280" y="466" class="typ" text-anchor="end">enum</text><text x="30" y="483" class="col">tier</text><text x="280" y="483" class="typ" text-anchor="end">enum</text><text x="30" y="500" class="col">balance_cents</text><text x="280" y="500" class="typ" text-anchor="end">bigint</text><text x="30" y="517" class="col">balance_as_of</text><text x="280" y="517" class="typ" text-anchor="end">timestamptz</text><text x="30" y="534" class="col">include_in_forecast</text><text x="280" y="534" class="typ" text-anchor="end">bool</text></g><g><rect x="20" y="575" width="270" height="174" rx="8" fill="#fff" stroke="var(--edge)" stroke-width="1.3"/><path d="M21,601 V583 a7,7 0 0 1 7,-7 H282 a7,7 0 0 1 7,7 V601 Z" fill="var(--accent-soft)"/><text x="30" y="593" class="bname">transactions</text><text x="280" y="592" class="pill pv1" text-anchor="end">v1</text><text x="30" y="617" class="col">id</text><text x="280" y="617" class="typ" text-anchor="end">uuid</text><text x="30" y="634" class="col">account_id</text><text x="280" y="634" class="typ" text-anchor="end">uuid</text><text x="30" y="651" class="col">posted_date</text><text x="280" y="651" class="typ" text-anchor="end">date</text><text x="30" y="668" class="col">amount_cents</text><text x="280" y="668" class="typ" text-anchor="end">bigint (+in / −out)</text><text x="30" y="685" class="col">merchant_name</text><text x="280" y="685" class="typ" text-anchor="end">text</text><text x="30" y="702" class="col">is_internal_transfer</text><text x="280" y="702" class="typ" text-anchor="end">bool</text><text x="30" y="719" class="col">income_stream_id</text><text x="280" y="719" class="typ" text-anchor="end">uuid</text><text x="30" y="736" class="col">recurring_bill_id</text><text x="280" y="736" class="typ" text-anchor="end">uuid</text></g><g><rect x="355" y="125" width="270" height="208" rx="8" fill="#fff" stroke="var(--edge)" stroke-width="1.3"/><path d="M356,151 V133 a7,7 0 0 1 7,-7 H617 a7,7 0 0 1 7,7 V151 Z" fill="var(--accent-soft)"/><text x="365" y="143" class="bname">income_streams</text><text x="615" y="142" class="pill pv1" text-anchor="end">v1</text><text x="365" y="167" class="col">id</text><text x="615" y="167" class="typ" text-anchor="end">uuid</text><text x="365" y="184" class="col">kind</text><text x="615" y="184" class="typ" text-anchor="end">enum</text><text x="365" y="201" class="col">cadence</text><text x="615" y="201" class="typ" text-anchor="end">enum</text><text x="365" y="218" class="col">expected_amount_cents</text><text x="615" y="218" class="typ" text-anchor="end">bigint</text><text x="365" y="235" class="col">amount_spread_cents</text><text x="615" y="235" class="typ" text-anchor="end">bigint</text><text x="365" y="252" class="col">pay_delay_days_max</text><text x="615" y="252" class="typ" text-anchor="end">int</text><text x="365" y="269" class="col">next_expected_date</text><text x="615" y="269" class="typ" text-anchor="end">date</text><text x="365" y="286" class="col">confidence</text><text x="615" y="286" class="typ" text-anchor="end">enum</text><text x="365" y="303" class="col">tax_withheld</text><text x="615" y="303" class="typ" text-anchor="end">bool</text><text x="365" y="320" class="col">ends_on</text><text x="615" y="320" class="typ" text-anchor="end">date</text></g><g><rect x="355" y="360" width="270" height="140" rx="8" fill="#fff" stroke="var(--edge)" stroke-width="1.3"/><path d="M356,386 V368 a7,7 0 0 1 7,-7 H617 a7,7 0 0 1 7,7 V386 Z" fill="var(--accent-soft)"/><text x="365" y="378" class="bname">recurring_bills</text><text x="615" y="377" class="pill pv1" text-anchor="end">v1</text><text x="365" y="402" class="col">id</text><text x="615" y="402" class="typ" text-anchor="end">uuid</text><text x="365" y="419" class="col">merchant_key</text><text x="615" y="419" class="typ" text-anchor="end">text</text><text x="365" y="436" class="col">cadence</text><text x="615" y="436" class="typ" text-anchor="end">enum</text><text x="365" y="453" class="col">typical_amount_cents</text><text x="615" y="453" class="typ" text-anchor="end">bigint</text><text x="365" y="470" class="col">next_expected_date</text><text x="615" y="470" class="typ" text-anchor="end">date</text><text x="365" y="487" class="col">occurrences</text><text x="615" y="487" class="typ" text-anchor="end">int</text></g><g><rect x="355" y="527" width="270" height="123" rx="8" fill="#fff" stroke="var(--edge)" stroke-width="1.3"/><path d="M356,553 V535 a7,7 0 0 1 7,-7 H617 a7,7 0 0 1 7,7 V553 Z" fill="var(--accent-soft)"/><text x="365" y="545" class="bname">planned_events</text><text x="615" y="544" class="pill pv1" text-anchor="end">v1</text><text x="365" y="569" class="col">id</text><text x="615" y="569" class="typ" text-anchor="end">uuid</text><text x="365" y="586" class="col">kind</text><text x="615" y="586" class="typ" text-anchor="end">enum</text><text x="365" y="603" class="col">amount_cents</text><text x="615" y="603" class="typ" text-anchor="end">bigint</text><text x="365" y="620" class="col">due_date</text><text x="615" y="620" class="typ" text-anchor="end">date</text><text x="365" y="637" class="col">origin</text><text x="615" y="637" class="typ" text-anchor="end">manual | system_tax</text></g><g><rect x="355" y="677" width="270" height="123" rx="8" fill="#fff" stroke="var(--edge)" stroke-width="1.3"/><path d="M356,703 V685 a7,7 0 0 1 7,-7 H617 a7,7 0 0 1 7,7 V703 Z" fill="var(--accent-soft)"/><text x="365" y="695" class="bname">goals</text><text x="615" y="694" class="pill pv2" text-anchor="end">v2</text><text x="365" y="719" class="col">id</text><text x="615" y="719" class="typ" text-anchor="end">uuid</text><text x="365" y="736" class="col">kind</text><text x="615" y="736" class="typ" text-anchor="end">enum</text><text x="365" y="753" class="col">target_cents</text><text x="615" y="753" class="typ" text-anchor="end">bigint</text><text x="365" y="770" class="col">target_date</text><text x="615" y="770" class="typ" text-anchor="end">date</text><text x="365" y="787" class="col">saved_cents</text><text x="615" y="787" class="typ" text-anchor="end">bigint</text></g><g><rect x="690" y="125" width="270" height="89" rx="8" fill="#fff" stroke="var(--edge)" stroke-width="1.3"/><path d="M691,151 V133 a7,7 0 0 1 7,-7 H952 a7,7 0 0 1 7,7 V151 Z" fill="var(--accent-soft)"/><text x="700" y="143" class="bname">scenarios</text><text x="950" y="142" class="pill pv2" text-anchor="end">v2</text><text x="700" y="167" class="col">id</text><text x="950" y="167" class="typ" text-anchor="end">uuid</text><text x="700" y="184" class="col">preset_key</text><text x="950" y="184" class="typ" text-anchor="end">text</text><text x="700" y="201" class="col">params</text><text x="950" y="201" class="typ" text-anchor="end">jsonb</text></g><g><rect x="690" y="245" width="270" height="140" rx="8" fill="#fff" stroke="var(--edge)" stroke-width="1.3"/><path d="M691,271 V253 a7,7 0 0 1 7,-7 H952 a7,7 0 0 1 7,7 V271 Z" fill="var(--accent-soft)"/><text x="700" y="263" class="bname">forecast_runs</text><text x="950" y="262" class="pill pv1" text-anchor="end">v1</text><text x="700" y="287" class="col">id</text><text x="950" y="287" class="typ" text-anchor="end">uuid</text><text x="700" y="304" class="col">as_of_date</text><text x="950" y="304" class="typ" text-anchor="end">date</text><text x="700" y="321" class="col">kind</text><text x="950" y="321" class="typ" text-anchor="end">live | backtest | scenario</text><text x="700" y="338" class="col">scenario_id</text><text x="950" y="338" class="typ" text-anchor="end">uuid</text><text x="700" y="355" class="col">runway_weeks</text><text x="950" y="355" class="typ" text-anchor="end">numeric</text><text x="700" y="372" class="col">engine_version</text><text x="950" y="372" class="typ" text-anchor="end">text</text></g><g><rect x="690" y="412" width="270" height="157" rx="8" fill="#fff" stroke="var(--edge)" stroke-width="1.3"/><path d="M691,438 V420 a7,7 0 0 1 7,-7 H952 a7,7 0 0 1 7,7 V438 Z" fill="var(--accent-soft)"/><text x="700" y="430" class="bname">forecast_weeks</text><text x="950" y="429" class="pill pv1" text-anchor="end">v1</text><text x="700" y="454" class="col">run_id</text><text x="950" y="454" class="typ" text-anchor="end">uuid</text><text x="700" y="471" class="col">week_index</text><text x="950" y="471" class="typ" text-anchor="end">1–12</text><text x="700" y="488" class="col">low_cents</text><text x="950" y="488" class="typ" text-anchor="end">bigint</text><text x="700" y="505" class="col">base_cents</text><text x="950" y="505" class="typ" text-anchor="end">bigint</text><text x="700" y="522" class="col">high_cents</text><text x="950" y="522" class="typ" text-anchor="end">bigint</text><text x="700" y="539" class="col">actual_cents</text><text x="950" y="539" class="typ" text-anchor="end">bigint (backtests)</text><text x="700" y="556" class="col">reasons</text><text x="950" y="556" class="typ" text-anchor="end">jsonb</text></g><g><rect x="690" y="610" width="270" height="89" rx="8" fill="#fff" stroke="var(--muted)" stroke-width="1.3" stroke-dasharray="5 4"/><path d="M691,636 V618 a7,7 0 0 1 7,-7 H952 a7,7 0 0 1 7,7 V636 Z" fill="var(--ref-soft)"/><text x="700" y="628" class="bname">tax_due_dates</text><text x="950" y="627" class="pill pref" text-anchor="end">shared</text><text x="700" y="652" class="col">tax_year</text><text x="950" y="652" class="typ" text-anchor="end">int</text><text x="700" y="669" class="col">quarter</text><text x="950" y="669" class="typ" text-anchor="end">1–4</text><text x="700" y="686" class="col">due_date</text><text x="950" y="686" class="typ" text-anchor="end">date</text></g></svg></div>
+  <p class="small">Green = v1 (Nov 17) · amber = v2 (Dec 1) · red dashed = server-only · grey dashed = shared reference data. Transactions link many-to-one to the income stream or bill they match. The dashed “engine” arrow means the forecast engine reads the middle column (plus balances and transactions) and writes forecast runs.</p>
+
+  <h2>How one dashboard number gets made</h2>
+  <ol>
+    <li>Sync pulls <code>accounts</code> and <code>transactions</code> through the provider adapter, flips signs and marks internal transfers.</li>
+    <li>Detection matches deposits to <code>income_streams</code> and charges to <code>recurring_bills</code>; the user confirms or edits them.</li>
+    <li>The engine starts from today's balances in accounts marked <code>include_in_forecast</code>, adds each stream, bill, planned event and computed tax payment week by week, and builds a low, base and high case from each stream's spread and confidence.</li>
+    <li>It writes one <code>forecast_runs</code> row and 12 <code>forecast_weeks</code> rows, with the reasons for any dip.</li>
+    <li>The dashboard pairs weeks into six windows and flags any window whose low case drops below zero.</li>
+  </ol>
+
+  <h2>Tables</h2>
+  
+  <section class="tbl">
+    <h3><code>profiles</code> <span class="tag t1">v1</span></h3>
+    <p>One row per user, created at sign-up. The starting profile only sets defaults; the engine never branches on it.</p>
+    <table><thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead><tbody>
+    <tr><td><code>id</code></td><td>uuid PK</td><td>Same as the Supabase Auth user id (auth.users.id).</td></tr><tr><td><code>display_name</code></td><td>text</td><td></td></tr><tr><td><code>profile_type</code></td><td>enum</td><td>freelance | student | steady. Changeable anytime.</td></tr><tr><td><code>timezone</code></td><td>text</td><td>IANA name, e.g. America/Chicago. Decides what “today” and each week mean.</td></tr><tr><td><code>runway_target_weeks</code></td><td>int</td><td>Default 17 (about 4 months). Freelancers may want 26.</td></tr><tr><td><code>tax_set_aside_pct</code></td><td>numeric(5,2)</td><td>Default 25.00 for freelance, 0 otherwise. Drives estimated-tax outflows.</td></tr><tr><td><code>range_confidence</code></td><td>int</td><td>How much of the likely outcomes the range covers: 80 (default) or 90 for a more cautious band.</td></tr><tr><td><code>graduation_prompted_at</code></td><td>timestamptz</td><td>When we last suggested switching to the steady view.</td></tr><tr><td><code>created_at, updated_at</code></td><td>timestamptz</td><td></td></tr>
+    </tbody></table>
+    
+  </section>
+  <section class="tbl">
+    <h3><code>connections</code> <span class="tag t1">v1</span></h3>
+    <p>One bank login through a provider. A login can hold several accounts.</p>
+    <table><thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead><tbody>
+    <tr><td><code>id</code></td><td>uuid PK</td><td></td></tr><tr><td><code>user_id</code></td><td>uuid FK</td><td></td></tr><tr><td><code>provider</code></td><td>enum</td><td>plaid | teller | csv</td></tr><tr><td><code>provider_item_id</code></td><td>text</td><td>Plaid item_id or Teller enrollment id. Null for CSV.</td></tr><tr><td><code>institution_name</code></td><td>text</td><td></td></tr><tr><td><code>status</code></td><td>enum</td><td>active | needs_reauth | error | disconnected. Shown to the user.</td></tr><tr><td><code>last_synced_at</code></td><td>timestamptz</td><td>Drives the stale-data warning.</td></tr><tr><td><code>sync_cursor</code></td><td>text</td><td>Plaid /transactions/sync cursor, for incremental syncs.</td></tr><tr><td><code>last_error_code</code></td><td>text</td><td></td></tr>
+    </tbody></table>
+    
+  </section>
+  <section class="tbl">
+    <h3><code>connection_secrets</code> <span class="tag ts">v1 · server only</span></h3>
+    <p>The provider access token, split out so no browser query can ever reach it.</p>
+    <table><thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead><tbody>
+    <tr><td><code>connection_id</code></td><td>uuid PK, FK</td><td>On delete cascade.</td></tr><tr><td><code>user_id</code></td><td>uuid</td><td></td></tr><tr><td><code>access_token_ciphertext</code></td><td>bytea</td><td>AES-256-GCM encrypted in server code; the key lives in an environment variable.</td></tr><tr><td><code>created_at, rotated_at</code></td><td>timestamptz</td><td></td></tr>
+    </tbody></table>
+    <p class="small">RLS is enabled with no policies, so only the service role (server routes) can read it.</p>
+  </section>
+  <section class="tbl">
+    <h3><code>accounts</code> <span class="tag t1">v1</span></h3>
+    <p>A checking, savings, card or investment account.</p>
+    <table><thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead><tbody>
+    <tr><td><code>id</code></td><td>uuid PK</td><td></td></tr><tr><td><code>user_id</code></td><td>uuid FK</td><td></td></tr><tr><td><code>connection_id</code></td><td>uuid FK, null</td><td>Null for an account entered by hand.</td></tr><tr><td><code>provider_account_id</code></td><td>text</td><td>Unique per connection.</td></tr><tr><td><code>name, mask</code></td><td>text</td><td>“Chase Checking”, “••4821”.</td></tr><tr><td><code>type</code></td><td>enum</td><td>checking | savings | credit_card | investment | loan | other</td></tr><tr><td><code>tier</code></td><td>enum</td><td>operating | reserve | long_term | excluded. Defaults from type; the user can change it. Used by positioning suggestions.</td></tr><tr><td><code>include_in_forecast</code></td><td>bool</td><td>Default true for checking and savings, false for investments and loans.</td></tr><tr><td><code>balance_cents</code></td><td>bigint</td><td>Current balance. Card balances are stored negative (money owed).</td></tr><tr><td><code>available_cents</code></td><td>bigint, null</td><td></td></tr><tr><td><code>balance_as_of</code></td><td>timestamptz</td><td>When the provider last confirmed the balance. Older than 3 days → warning.</td></tr>
+    </tbody></table>
+    
+  </section>
+  <section class="tbl">
+    <h3><code>transactions</code> <span class="tag t1">v1</span></h3>
+    <p>Posted and pending transactions, normalized from every provider.</p>
+    <table><thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead><tbody>
+    <tr><td><code>id</code></td><td>uuid PK</td><td></td></tr><tr><td><code>user_id</code></td><td>uuid FK</td><td></td></tr><tr><td><code>account_id</code></td><td>uuid FK</td><td>On delete cascade.</td></tr><tr><td><code>provider_txn_id</code></td><td>text</td><td>Unique per account, so re-syncs don't duplicate rows.</td></tr><tr><td><code>posted_date</code></td><td>date</td><td>In the user's time zone.</td></tr><tr><td><code>amount_cents</code></td><td>bigint</td><td>Positive = money in, negative = money out. Flipped from Plaid's convention in the adapter.</td></tr><tr><td><code>pending</code></td><td>bool</td><td></td></tr><tr><td><code>merchant_name, description</code></td><td>text</td><td>Never logged.</td></tr><tr><td><code>category</code></td><td>text</td><td>Provider category, for display only.</td></tr><tr><td><code>is_internal_transfer</code></td><td>bool</td><td>Moves between your own accounts and card payments. Excluded from income and spending.</td></tr><tr><td><code>transfer_pair_id</code></td><td>uuid, null</td><td>Links the two sides of an internal transfer.</td></tr><tr><td><code>income_stream_id</code></td><td>uuid FK, null</td><td>Set when a deposit matches an income stream.</td></tr><tr><td><code>recurring_bill_id</code></td><td>uuid FK, null</td><td>Set when a charge matches a recurring bill.</td></tr><tr><td><code>source</code></td><td>enum</td><td>sync | csv | manual</td></tr>
+    </tbody></table>
+    <p class="small">Index on (user_id, posted_date).</p>
+  </section>
+  <section class="tbl">
+    <h3><code>income_streams</code> <span class="tag t1">v1</span></h3>
+    <p>Each source of income, detected or entered. The key to irregular-income forecasting: every stream has its own timing and uncertainty.</p>
+    <table><thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead><tbody>
+    <tr><td><code>id</code></td><td>uuid PK</td><td></td></tr><tr><td><code>user_id</code></td><td>uuid FK</td><td></td></tr><tr><td><code>name</code></td><td>text</td><td>“Acme Co.”, “TA stipend”, “Paycheck”.</td></tr><tr><td><code>kind</code></td><td>enum</td><td>salary | freelance_client | stipend | bonus | other</td></tr><tr><td><code>origin</code></td><td>enum</td><td>detected | manual</td></tr><tr><td><code>cadence</code></td><td>enum</td><td>weekly | biweekly | semimonthly | monthly | per_term | irregular</td></tr><tr><td><code>expected_amount_cents</code></td><td>bigint</td><td></td></tr><tr><td><code>amount_spread_cents</code></td><td>bigint</td><td>Typical deviation. Wider spread → wider forecast range.</td></tr><tr><td><code>pay_delay_days_min, _max</code></td><td>int</td><td>For freelance: days from invoice to payment, e.g. 21–35.</td></tr><tr><td><code>next_expected_date</code></td><td>date</td><td></td></tr><tr><td><code>confidence</code></td><td>enum</td><td>certain | likely | uncertain. Uncertain income is left out of the low case.</td></tr><tr><td><code>tax_withheld</code></td><td>bool</td><td>False for freelance and most fellowships, so it counts toward estimated tax.</td></tr><tr><td><code>starts_on, ends_on</code></td><td>date, null</td><td>A stipend that ends May 15 creates the summer gap.</td></tr><tr><td><code>active</code></td><td>bool</td><td></td></tr>
+    </tbody></table>
+    
+  </section>
+  <section class="tbl">
+    <h3><code>recurring_bills</code> <span class="tag t1">v1</span></h3>
+    <p>Rent, subscriptions, utilities, loan payments.</p>
+    <table><thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead><tbody>
+    <tr><td><code>id</code></td><td>uuid PK</td><td></td></tr><tr><td><code>user_id</code></td><td>uuid FK</td><td></td></tr><tr><td><code>account_id</code></td><td>uuid FK, null</td><td>Which account pays it.</td></tr><tr><td><code>name, merchant_key</code></td><td>text</td><td>merchant_key is the normalized merchant used for matching.</td></tr><tr><td><code>cadence</code></td><td>enum</td><td>weekly … annual</td></tr><tr><td><code>typical_amount_cents</code></td><td>bigint</td><td>Negative.</td></tr><tr><td><code>amount_spread_cents</code></td><td>bigint</td><td>Utilities vary; rent doesn't.</td></tr><tr><td><code>next_expected_date</code></td><td>date</td><td></td></tr><tr><td><code>occurrences</code></td><td>int</td><td>Fewer than 3 = not yet trusted (the same rule Plaid uses).</td></tr><tr><td><code>origin, user_confirmed, active</code></td><td>enum, bool, bool</td><td></td></tr>
+    </tbody></table>
+    
+  </section>
+  <section class="tbl">
+    <h3><code>planned_events</code> <span class="tag t1">v1</span></h3>
+    <p>Dated one-offs that feed the 12-week forecast: tuition, a trip, a known repair, a one-time payment.</p>
+    <table><thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead><tbody>
+    <tr><td><code>id</code></td><td>uuid PK</td><td></td></tr><tr><td><code>user_id</code></td><td>uuid FK</td><td></td></tr><tr><td><code>name</code></td><td>text</td><td></td></tr><tr><td><code>kind</code></td><td>enum</td><td>tuition | purchase | travel | tax_payment | income_one_off | other</td></tr><tr><td><code>amount_cents</code></td><td>bigint</td><td>Signed.</td></tr><tr><td><code>due_date</code></td><td>date</td><td></td></tr><tr><td><code>origin</code></td><td>enum</td><td>manual | system_tax</td></tr><tr><td><code>note</code></td><td>text, null</td><td></td></tr>
+    </tbody></table>
+    <p class="small">Estimated tax payments are computed by the engine from tax_due_dates, untaxed income and tax_set_aside_pct. A tax_payment row on the same date overrides the computed amount.</p>
+  </section>
+  <section class="tbl">
+    <h3><code>goals</code> <span class="tag t2">v2</span></h3>
+    <p>Longer-term targets for the 1–2 year goals view.</p>
+    <table><thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead><tbody>
+    <tr><td><code>id</code></td><td>uuid PK</td><td></td></tr><tr><td><code>user_id</code></td><td>uuid FK</td><td></td></tr><tr><td><code>name</code></td><td>text</td><td></td></tr><tr><td><code>kind</code></td><td>enum</td><td>emergency_fund | home_down_payment | car | education | travel | other</td></tr><tr><td><code>target_cents</code></td><td>bigint</td><td></td></tr><tr><td><code>target_date</code></td><td>date</td><td></td></tr><tr><td><code>saved_cents</code></td><td>bigint</td><td>Entered by hand in v2 (see open questions).</td></tr><tr><td><code>monthly_contribution_cents</code></td><td>bigint, null</td><td>Planned pace; used for the pessimistic and optimistic projections.</td></tr><tr><td><code>priority</code></td><td>smallint</td><td></td></tr><tr><td><code>status</code></td><td>enum</td><td>active | reached | paused</td></tr>
+    </tbody></table>
+    
+  </section>
+  <section class="tbl">
+    <h3><code>scenarios</code> <span class="tag t2">v2</span></h3>
+    <p>Stress tests. Built-in presets have no owner; custom ones belong to a user.</p>
+    <table><thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead><tbody>
+    <tr><td><code>id</code></td><td>uuid PK</td><td></td></tr><tr><td><code>user_id</code></td><td>uuid FK, null</td><td>Null = a preset everyone can read.</td></tr><tr><td><code>preset_key</code></td><td>text</td><td>income_stops | lose_biggest_client | car_repair | summer_gap</td></tr><tr><td><code>name</code></td><td>text</td><td></td></tr><tr><td><code>params</code></td><td>jsonb</td><td>e.g. {"remove_stream_id": "…", "one_off_cents": -150000}</td></tr>
+    </tbody></table>
+    
+  </section>
+  <section class="tbl">
+    <h3><code>forecast_runs</code> <span class="tag t1">v1</span></h3>
+    <p>One run of the engine. Live runs feed the dashboard; backtests feed the accuracy score; scenario runs feed stress tests.</p>
+    <table><thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead><tbody>
+    <tr><td><code>id</code></td><td>uuid PK</td><td></td></tr><tr><td><code>user_id</code></td><td>uuid FK</td><td></td></tr><tr><td><code>as_of_date</code></td><td>date</td><td>Today for live runs; a past date for backtests.</td></tr><tr><td><code>kind</code></td><td>enum</td><td>live | backtest | scenario</td></tr><tr><td><code>scenario_id</code></td><td>uuid FK, null</td><td></td></tr><tr><td><code>horizon_weeks</code></td><td>smallint</td><td>12.</td></tr><tr><td><code>runway_weeks</code></td><td>numeric(5,1)</td><td>Weeks of cash if income stopped on as_of_date.</td></tr><tr><td><code>engine_version</code></td><td>text</td><td>So old runs stay explainable after the engine changes.</td></tr><tr><td><code>inputs_hash</code></td><td>text</td><td>Skip re-running when nothing changed.</td></tr><tr><td><code>created_at</code></td><td>timestamptz</td><td></td></tr>
+    </tbody></table>
+    
+  </section>
+  <section class="tbl">
+    <h3><code>forecast_weeks</code> <span class="tag t1">v1</span></h3>
+    <p>The 12 rows behind each run. The dashboard's two-week windows are pairs of these.</p>
+    <table><thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead><tbody>
+    <tr><td><code>run_id</code></td><td>uuid FK</td><td>Primary key is (run_id, week_index). On delete cascade.</td></tr><tr><td><code>user_id</code></td><td>uuid</td><td>Copied in for RLS.</td></tr><tr><td><code>week_index</code></td><td>smallint</td><td>1–12.</td></tr><tr><td><code>week_start</code></td><td>date</td><td></td></tr><tr><td><code>low_cents, base_cents, high_cents</code></td><td>bigint</td><td>The lowest balance during that week, in each case.</td></tr><tr><td><code>actual_cents</code></td><td>bigint, null</td><td>Filled for backtests: what really happened. Accuracy = compare to the range.</td></tr><tr><td><code>reasons</code></td><td>jsonb</td><td>The events behind a dip, for the “why” text: [{"label": "Jan 15 estimated tax", "amount_cents": -240000}].</td></tr>
+    </tbody></table>
+    
+  </section>
+  <section class="tbl">
+    <h3><code>tax_due_dates</code> <span class="tag tr">v1 · shared reference</span></h3>
+    <p>IRS estimated-tax due dates, seeded each year from Form 1040-ES.</p>
+    <table><thead><tr><th>Column</th><th>Type</th><th>Notes</th></tr></thead><tbody>
+    <tr><td><code>tax_year, quarter</code></td><td>int, smallint</td><td>Primary key.</td></tr><tr><td><code>due_date</code></td><td>date</td><td>e.g. 2026 Q4 → Jan 15, 2027.</td></tr><tr><td><code>covers_from, covers_to</code></td><td>date</td><td>The income period the payment covers.</td></tr>
+    </tbody></table>
+    <p class="small">Readable by every signed-in user; written only through migrations.</p>
+  </section>
+
+  <h2>Security and row-level security</h2>
+  <p>The standard policy, applied to every user table:</p>
+<pre>alter table accounts enable row level security;
+create policy "own rows" on accounts
+  for all using (auth.uid() = user_id) with check (auth.uid() = user_id);</pre>
+  <ul>
+    <li><strong>Exceptions:</strong>
+      <ul>
+        <li><code>connection_secrets</code> has RLS on and no policies, so only the server can read it.</li>
+        <li><code>forecast_runs</code> and <code>forecast_weeks</code> are read-only for users; the engine writes them server-side.</li>
+        <li><code>tax_due_dates</code> and the preset <code>scenarios</code> are readable by everyone.</li>
+      </ul>
+    </li>
+    <li><strong>A test proves it:</strong> sign in as user A and confirm that user B's rows return nothing.</li>
+    <li><strong>Deleting an account</strong> first revokes the bank connection with the provider (Plaid <code>/item/remove</code>), then deletes the profile, which cascades to everything else.</li>
+  </ul>
+
+  <h2>Open questions for you</h2>
+  <ol>
+    <li><strong>Auth:</strong> OK to use Supabase Auth instead of Clerk? Choose Clerk only if the course requires it.</li>
+    <li><strong>Credit cards:</strong> I've treated the monthly card payment from checking as a recurring bill and left card balances out of the cash total. Does that match how you think about cards?</li>
+    <li><strong>Goals:</strong> should <code>saved_cents</code> be typed in by hand (simplest, v2) or tied to specific savings accounts (more accurate, more work)?</li>
+    <li><strong>Investments:</strong> included in the runway number, or only cash? I'd leave them out by default, since selling them takes time and they can drop.</li>
+    <li><strong>Tester data after Dec 1:</strong> delete all real bank data after the fair? I'd say yes, and add a “delete my data” button either way.</li>
+  </ol>
+</main></body></html>

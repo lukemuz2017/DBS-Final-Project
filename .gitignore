@@ -6,7 +6,18 @@ Design, Build, Ship - Week 5 - Project Proposal.pdf
 Thumbs.db
 ~$*
 
-# Secrets for the app later
+# Secrets (the example file with blank values is safe to commit)
 .env*
+!.env.example
+certs/
+*.pem
+*.key
+*.p12
+
+# Personal Claude Code settings (shared ones live in .claude/settings.json)
+.claude/settings.local.json
+
+# Build output and dependencies
 .vercel
+.next/
 node_modules/
