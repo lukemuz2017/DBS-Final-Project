@@ -14,8 +14,10 @@ function block(msg) {
 // ---- Rules on the command text --------------------------------------------
 
 // Secret files: .env, .env.local, .env.production... but NOT .env.example.
+// (".key" files are caught by the commit scan below; matching ".key" in command
+// text blocked ordinary code like `e.key === "Escape"`.)
 const SECRET_PATH =
-  /(^|[\s"'\/\\=:])\.env(\.(local|development|production|test)(\.local)?)?(?![\w.-])|(^|[\s"'\/\\=:])\.env\.[\w-]*\.local(?![\w.-])|\.(pem|p12|key)(?![\w.-])|(^|[\s"'\/\\])certs[\/\\]/i;
+  /(^|[\s"'\/\\=:])\.env(\.(local|development|production|test)(\.local)?)?(?![\w.-])|(^|[\s"'\/\\=:])\.env\.[\w-]*\.local(?![\w.-])|\.(pem|p12)(?![\w.-])|(^|[\s"'\/\\])certs[\/\\]/i;
 
 const RULES = [
   [SECRET_PATH, "this command touches a secrets file (.env*, certs/, *.pem, *.key). Ask the user to do it, or use .env.example."],

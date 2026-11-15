@@ -20,4 +20,10 @@ certs/
 # Build output and dependencies
 .vercel
 .next/
+/out/
+/build
+/coverage
 node_modules/
+*.tsbuildinfo
+next-env.d.ts
+npm-debug.log*

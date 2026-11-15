@@ -2,19 +2,29 @@
 
 A 12-week cash forecast for people with lumpy income (freelancers and students first, steady earners too). It shows a low/base/high range, explains why you'll come up short, puts estimated taxes and tuition on the calendar, and grows into a 1–2 year goal planner. Class project for MPCS 51238 (Design, Build, Ship). v1 ships Nov 17, 2026; v2 at the project fair Dec 1.
 
-- Product: `proposal/v2.html` (the current plan; `proposal/index.html` is the original, leave it alone).
+- Product: `public/proposal/v2.html` (the current plan; `public/proposal/index.html` is the original, leave it alone).
 - Data model: `docs/data-model.html`. Read it before touching the schema.
 - Research: `research_notes/` and `reports/`. Background only; don't load unless asked.
 
 ## Stack
 
-Next.js (App Router, TypeScript) on Vercel · Supabase (Postgres, Auth, row-level security) · Chart.js · Claude API only for the stretch-goal assistant. Bank data sits behind one provider interface: Plaid Sandbox, Teller dev and CSV import come later.
+Next.js 16 (App Router, TypeScript, Tailwind v4) on Vercel · Supabase (Postgres, Auth, row-level security) · charts are hand-built SVG (`src/components/ForecastChart.tsx`), not Chart.js · Claude API only for the stretch-goal assistant. Bank data sits behind one provider interface: Plaid Sandbox, Teller dev and CSV import come later.
 
-**Current phase: dummy data only.** No bank connections yet; don't add Plaid or Teller code unless the user asks. Seed realistic fake users (a freelancer, a student, a steady earner) through a `fixture` provider that writes into the same `connections` / `accounts` / `transactions` tables a real provider would, so the UI and engine don't change when real banks arrive. Focus is UI/UX and the forecast engine.
+@AGENTS.md
+
+**Current phase: dummy data only.** No bank connections yet; don't add Plaid or Teller code unless the user asks. Three demo personas live in code at `src/lib/demo/`: Priya (Booth MBA student, Chicago), Jordan (freelance photographer, Brooklyn) and Sam (gig worker turned salaried, LA). Their shapes in `src/lib/types.ts` mirror the data model, so a `fixture` provider can later seed them into Supabase without changing the engine or UI. Keep their numbers realistic for their city and situation. Focus is UI/UX and the forecast engine.
+
+**Look and feel:** the proposal page's palette is the baseline (warm paper background, faded green accent, yellow "sun" glow; Fraunces headings, Nunito Sans body). Tokens are in `src/app/globals.css`.
 
 ## Commands
 
-The app is not scaffolded yet. When it is, list the real commands here (dev, test, lint, typecheck, migrations) and keep this section accurate.
+- `npm run dev`: dev server on **port 3210** (3000 and 3100 are used by the user's other projects). App is at `/dashboard/<persona>`.
+- `npm test` (Vitest): engine tests in `src/lib/engine/*.test.ts`.
+- `npm run typecheck` / `npm run lint`.
+- `npm run peek`: prints each persona's forecast in the terminal.
+- After moving or deleting route files, run `npx next typegen` before `tsc`. Next 16 generates route types into `.next/`.
+
+Layout: `src/lib/engine/forecast.ts` (pure engine) · `src/lib/demo/` (personas) · `src/components/` (UI) · `src/app/dashboard/[persona]/page.tsx` (dashboard) · `src/lib/supabase/` (clients; not used by the demo yet) · `src/app/api/health` (dev-only Supabase key check).
 
 ## Rules that keep the numbers right
 
@@ -43,4 +53,9 @@ The app is not scaffolded yet. When it is, list the real commands here (dev, tes
 
 ## Lessons (add a line whenever the same mistake happens twice)
 
-- _None yet._
+- **Start the dev server from PowerShell, not Git Bash.** Launched from a Git Bash background job, Turbopack's CSS worker dies with `0xc0000142` and every page returns 500. Stopping an npm background task can also leave the Next server running on the port: find it by port and stop that PID (only if its command line is this project).
+- **Next 16 here has `cacheComponents` and `partialPrefetching` on.** Read `params`/`searchParams` inside `<Suspense>`, list known params with `generateStaticParams`, never export `dynamicParams` (the build fails), and don't call `redirect()` in a page that gets prerendered. Use `redirects()` in `next.config.ts`. Check `node_modules/next/dist/docs/` before guessing.
+- **Headless Edge/Chrome won't lay out narrower than about 504px**, even with `--window-size=390`. Test "phone" screenshots at 504px, or the page will look cut off when it isn't.
+- **If a style change doesn't show up, restart the dev server.** Turbopack can miss a `globals.css` edit while Vitest is writing its cache, and keep serving the old CSS. Check the served CSS (curl the chunk) before debugging the code.
+- **Demo edits live in the browser** (`src/lib/demo/useDemoProfile.ts`, localStorage key `runway-demo-v1:<persona>`). If you change the demo data shape, bump the version so old saved edits are ignored.
+- **Don't touch `/` routing for Vercel.** `vercel.json` serves the proposal at `/`, so the app must keep working under `/dashboard`.

@@ -1,0 +1,99 @@
+@import "tailwindcss";
+
+/* Runway palette — the baseline from the proposal page:
+   warm paper background, faded green accent, a yellow "sun" glow. */
+:root {
+  color-scheme: light;
+  --bg: #fdf9f3;
+  --surface: #ffffff;
+  --text: #22303c;
+  --muted: #627080;
+  --line: #ece4d8;
+  --grid: #efe8dc;
+  --accent: #12806a;
+  --accent-strong: #0d6553;
+  --accent-soft: #e2f4ee;
+  --band: #c9eadf;
+  --mint: #e6f6f0;
+  --sun: #ffd98a;
+  --sun-soft: #fff4dc;
+  --warn: #d0632b;
+  --warn-soft: #fdece2;
+  --tight: #9a6a00;
+  --tight-soft: #fdf0d5;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-ink: var(--text);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-band: var(--band);
+  --color-mint: var(--mint);
+  --color-sun: var(--sun);
+  --color-sun-soft: var(--sun-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-tight: var(--tight);
+  --color-tight-soft: var(--tight-soft);
+  --font-sans: var(--font-nunito), ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-display: var(--font-fraunces), Georgia, serif;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.hero-glow {
+  background:
+    radial-gradient(circle at 88% 12%, var(--sun) 0, transparent 30%),
+    linear-gradient(160deg, var(--mint) 0%, #fdf3e6 70%, var(--bg) 100%);
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(60, 40, 10, 0.04), 0 6px 20px rgba(60, 40, 10, 0.05);
+}
+
+/* Edit drawer: a native <dialog> pinned to the right edge. */
+dialog.drawer {
+  margin: 0 0 0 auto;
+  height: 100dvh;
+  max-height: 100dvh;
+  width: min(500px, 100vw);
+  max-width: 100vw;
+  padding: 0;
+  border: 0;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: -12px 0 40px rgba(34, 48, 60, 0.18);
+}
+dialog.drawer[open] {
+  animation: drawer-in 0.18s ease-out;
+}
+dialog.drawer::backdrop {
+  background: rgba(34, 48, 60, 0.35);
+}
+@keyframes drawer-in {
+  from { transform: translateX(24px); opacity: 0.6; }
+  to { transform: none; opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  dialog.drawer[open] { animation: none; }
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
