@@ -26,6 +26,7 @@ export const freelance: Profile = {
     { id: "f-tax", institution: "Marcus", name: "Tax savings", mask: "5512", type: "savings", tier: "reserve", balanceCents: 480_000, balanceAsOf: "2026-11-13T05:30:00Z" },
     { id: "f-emg", institution: "Ally", name: "Emergency fund", mask: "8834", type: "savings", tier: "reserve", balanceCents: 320_000, balanceAsOf: "2026-11-09T05:30:00Z" },
     { id: "f-sep", institution: "Fidelity", name: "SEP IRA", mask: "7140", type: "investment", tier: "long_term", balanceCents: 1_460_000, balanceAsOf: "2026-11-12T22:00:00Z" },
+    { id: "f-bh", institution: "B&H Payboo", name: "Gear financing", mask: "6620", type: "loan", tier: "excluded", balanceCents: -189_000, balanceAsOf: "2026-11-12T22:00:00Z" },
     { id: "f-card", institution: "Amex", name: "Blue Business Cash", mask: "1007", type: "credit_card", tier: "excluded", balanceCents: -88_000, balanceAsOf: "2026-11-13T08:02:00Z" },
   ],
 

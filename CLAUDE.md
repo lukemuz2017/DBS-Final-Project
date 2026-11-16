@@ -53,6 +53,7 @@ Layout: `src/lib/engine/forecast.ts` (pure engine) · `src/lib/demo/` (personas)
 
 ## Lessons (add a line whenever the same mistake happens twice)
 
+- **To give the user a dev server that stays up, open it in its own window:** `powershell.exe -NoProfile -Command "Start-Process powershell -ArgumentList '-NoExit','-Command','Set-Location C:\users\muzik\projects\final-project; npm.cmd run dev'"`. Use `npm.cmd`, not `npm` (a fresh PowerShell window blocks `npm.ps1` by execution policy). Claude Code's own background servers get stopped when the machine runs low on memory.
 - **Start the dev server from PowerShell, not Git Bash.** Launched from a Git Bash background job, Turbopack's CSS worker dies with `0xc0000142` and every page returns 500. Stopping an npm background task can also leave the Next server running on the port: find it by port and stop that PID (only if its command line is this project).
 - **Next 16 here has `cacheComponents` and `partialPrefetching` on.** Read `params`/`searchParams` inside `<Suspense>`, list known params with `generateStaticParams`, never export `dynamicParams` (the build fails), and don't call `redirect()` in a page that gets prerendered. Use `redirects()` in `next.config.ts`. Check `node_modules/next/dist/docs/` before guessing.
 - **Headless Edge/Chrome won't lay out narrower than about 504px**, even with `--window-size=390`. Test "phone" screenshots at 504px, or the page will look cut off when it isn't.

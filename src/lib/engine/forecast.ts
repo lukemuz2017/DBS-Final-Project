@@ -48,6 +48,8 @@ export interface WeekResult {
   high: number;
   lowMinDate: string;
   status: Status;
+  /** Projected checking balance on the last day of the week (likely case). */
+  endBase: number;
 }
 
 export interface Reasons {
@@ -60,6 +62,10 @@ export interface Fix {
   kind: "move" | "shortfall";
   amount: number;
   from?: string;
+  /** For a move: each savings account to draw from, and how much (largest first). */
+  legs?: { accountId: string; account: string; amount: number; balance: number }[];
+  /** For a move: the checking account to move it into. */
+  to?: string;
   by?: string;
   sentence: string;
   rule: string;
@@ -81,8 +87,20 @@ export interface WindowResult {
   continuesFrom?: number;
 }
 
+/**
+ * Which balance the 12 weeks track:
+ * - "checking": the operating account(s) bills come out of (default). A dip that
+ *   savings can cover is "short" (move money); one it can't is "shortfall".
+ * - "cash": checking plus savings ("buffer" accounts) together. Transfers between
+ *   them cancel out. Investments and retirement accounts are never included.
+ */
+export type Scope = "checking" | "cash";
+
 export interface Forecast {
   today: string;
+  scope: Scope;
+  /** Balance the forecast starts from: checking, or checking + savings. */
+  startBalance: number;
   zFor: number;
   operatingToday: number;
   reserveToday: number;
@@ -288,7 +306,8 @@ function explain(events: CashEvent[], minDate: string): Reasons {
 // ---------------------------------------------------------------------------
 // 4. Put it together.
 
-export function forecast(p: Profile): Forecast {
+export function forecast(p: Profile, opts: { scope?: Scope } = {}): Forecast {
+  const scope: Scope = opts.scope ?? "checking";
   const z = Z[p.rangeConfidence];
   const from = addDays(p.today, 1);
   const to = addDays(p.today, HORIZON_DAYS);
@@ -297,11 +316,19 @@ export function forecast(p: Profile): Forecast {
   const operatingToday = p.accounts.filter((a) => a.tier === "operating").reduce((s, a) => s + a.balanceCents, 0);
   const reserveAccounts = p.accounts.filter((a) => a.tier === "reserve").map((a) => ({ id: a.id, name: `${a.institution} ${a.name}`, balance: a.balanceCents }));
   const reserveToday = reserveAccounts.reduce((s, a) => s + a.balance, 0);
+  const op = p.accounts.find((a) => a.tier === "operating");
+  const operatingName = op ? `${op.institution} ${op.name}` : "checking";
 
+  // In the "cash" scope savings are part of the balance, so transfers into savings move
+  // money between two counted accounts and are left out of the simulation.
+  const startBalance = scope === "cash" ? operatingToday + reserveToday : operatingToday;
+  const simEvents = scope === "cash" ? events.filter((e) => !e.toReserve) : events;
+  // Savings still outside the tracked balance, available to cover a dip.
+  const outsideReserve = scope === "cash" ? 0 : reserveToday;
   const sims = {
-    low: simulate(p, events, "low", operatingToday, z),
-    base: simulate(p, events, "base", operatingToday, z),
-    high: simulate(p, events, "high", operatingToday, z),
+    low: simulate(p, simEvents, "low", startBalance, z),
+    base: simulate(p, simEvents, "base", startBalance, z),
+    high: simulate(p, simEvents, "high", startBalance, z),
   };
 
   // Weekly burn: essential bills + everyday spending, averaged over the horizon.
@@ -321,7 +348,7 @@ export function forecast(p: Profile): Forecast {
       baseMin = Math.min(baseMin, sims.base.bal[i]);
       highMin = Math.min(highMin, sims.high.bal[i]);
     }
-    const reserveThen = reserveToday + sims.low.reserveAdd[lowIdx];
+    const reserveThen = outsideReserve + (scope === "cash" ? 0 : sims.low.reserveAdd[lowIdx]);
     const status: Status =
       lowMin < 0 ? (lowMin + reserveThen < 0 ? "shortfall" : "short") : lowMin < cushion ? "tight" : "ok";
     weeks.push({
@@ -333,6 +360,7 @@ export function forecast(p: Profile): Forecast {
       high: highMin,
       lowMinDate: addDays(p.today, lowIdx),
       status,
+      endBase: sims.base.bal[last],
     });
   }
 
@@ -378,27 +406,30 @@ export function forecast(p: Profile): Forecast {
         const by = addDays(firstDip.lowMinDate, -3) > p.today ? addDays(firstDip.lowMinDate, -3) : addDays(p.today, 1);
         // Draw from the largest savings account first, then the next.
         const parts: string[] = [];
+        const legs: NonNullable<Fix["legs"]> = [];
         let left = amount;
         for (const r of [...reserveAccounts].sort((x, y) => y.balance - x.balance)) {
           if (left <= 0) break;
           const take = Math.min(left, Math.floor(r.balance / 10_000) * 10_000);
-          if (take > 0) { parts.push(`${usd(take)} from ${r.name}`); left -= take; }
+          if (take > 0) { parts.push(`${usd(take)} from ${r.name}`); legs.push({ accountId: r.id, account: r.name, amount: take, balance: r.balance }); left -= take; }
         }
         const from = parts.length > 1 ? `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}` : parts[0];
         win.fix = {
           kind: "move",
           amount,
           from,
+          legs,
+          to: operatingName,
           by,
           sentence: `Move ${from} to checking by ${fmtDate(by)}.`,
           rule: "Rule of thumb: checking should cover the cautious case; savings is the buffer, not the bill-payer.",
         };
       } else if (status === "shortfall") {
-        const shortBy = ceilHundred(-(worst.low + reserveToday));
+        const shortBy = ceilHundred(-(worst.low + outsideReserve));
         win.fix = {
           kind: "shortfall",
           amount: shortBy,
-          sentence: `Even with all savings moved to checking, you'd be about ${usd(shortBy)} short around ${fmtDate(worst.lowMinDate)} in the cautious case. Push a planned expense, chase an invoice, or line up extra income before then.`,
+          sentence: `${scope === "cash" ? "Counting checking and savings together" : "Even with all savings moved to checking"}, you'd be about ${usd(shortBy)} short around ${fmtDate(worst.lowMinDate)} in the cautious case. Push a planned expense, chase an invoice, or line up extra income before then.`,
           rule: "Rule of thumb: fix a real shortfall weeks ahead, while you still have options.",
         };
       } else if (status === "tight") {
@@ -428,6 +459,8 @@ export function forecast(p: Profile): Forecast {
 
   return {
     today: p.today,
+    scope,
+    startBalance,
     zFor: z,
     operatingToday,
     reserveToday,

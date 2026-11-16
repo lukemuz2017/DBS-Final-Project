@@ -7,7 +7,7 @@ export const GLOSSARY = {
     body: "Checking plus any savings marked as a buffer. Investments, retirement accounts and credit cards aren't counted, because you can't (or shouldn't) spend them this week.",
   },
   runway: {
-    title: "Runway if income stopped",
+    title: "Cash Runway",
     body: "How many weeks your cash would last if no more money came in. It divides cash today by your weekly burn: essential bills plus typical everyday spending. The target comes from your profile; the usual advice is 3–6 months.",
   },
   burn: {
@@ -41,6 +41,30 @@ export const GLOSSARY = {
   range: {
     title: "The range",
     body: "From the cautious case to the good case. It widens the further out you look, and it's wider when your income is less predictable.",
+  },
+  otherExpenses: {
+    title: "Other expenses (est.)",
+    body: "Everything that isn't a scheduled bill or plan: groceries, coffee, rides, and other day-to-day spending. It's this week's total, estimated from your recent spending, and runs higher in the cautious case.",
+  },
+  forecastHelp: {
+    title: "Reading the Cash Forecast",
+    body: "Each tile is one week: T+1W is next week, T+12W is twelve weeks out. The number is the lowest your balance gets that week, in the likely case. A dot means the week needs attention; hover it for what to do, or click it for the full breakdown. In the chart, the line is the likely case and the shaded band runs from a cautious case (income late, bills high) to a good case.",
+  },
+  goalsHelp: {
+    title: "Reading Goals",
+    body: "For each goal: will you reach it by your date at the monthly amount you're putting in now? If not, it shows when you would, and how much per month would get you there on time.",
+  },
+  whyPinches: {
+    title: "Why it pinches",
+    body: "Loans pay tuition first, and only the leftover reaches you, once a quarter. The weeks before each refund are the tightest of the term, especially over winter break.",
+  },
+  scopeChecking: {
+    title: "Checking only",
+    body: "Bills and everyday spending come out of checking, so this view shows when you'd need to move money. A dip that savings can cover is flagged “Move money”.",
+  },
+  scopeCash: {
+    title: "Checking + savings",
+    body: "Your whole cash cushion: checking and savings counted together, so moving money between them doesn't change it. Investments and retirement accounts are left out, because selling takes time, values drop, and early withdrawals can cost taxes and penalties.",
   },
   window: {
     title: "Two-week window",

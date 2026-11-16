@@ -25,6 +25,8 @@ export const steady: Profile = {
     { id: "o-chk", institution: "Wells Fargo", name: "Everyday Checking", mask: "6403", type: "checking", tier: "operating", balanceCents: 390_000, balanceAsOf: "2026-11-13T07:45:00Z" },
     { id: "o-sav", institution: "SoFi", name: "Savings", mask: "2118", type: "savings", tier: "reserve", balanceCents: 680_000, balanceAsOf: "2026-11-13T06:10:00Z" },
     { id: "o-401k", institution: "Fidelity", name: "401(k)", mask: "9921", type: "investment", tier: "long_term", balanceCents: 290_000, balanceAsOf: "2026-11-12T22:00:00Z" },
+    { id: "o-auto", institution: "Honda Financial", name: "Auto loan", mask: "7731", type: "loan", tier: "excluded", balanceCents: -1_480_000, balanceAsOf: "2026-11-12T22:00:00Z" },
+    { id: "o-stl", institution: "Nelnet", name: "Federal student loans", mask: "0458", type: "loan", tier: "excluded", balanceCents: -2_260_000, balanceAsOf: "2026-11-12T22:00:00Z" },
     { id: "o-card", institution: "Capital One", name: "Quicksilver", mask: "5521", type: "credit_card", tier: "excluded", balanceCents: -340_000, balanceAsOf: "2026-11-13T07:45:00Z" },
   ],
 

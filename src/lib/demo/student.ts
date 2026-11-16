@@ -26,6 +26,7 @@ export const student: Profile = {
     { id: "s-chk", institution: "Chase", name: "Total Checking", mask: "4821", type: "checking", tier: "operating", balanceCents: 690_000, balanceAsOf: "2026-11-13T07:12:00Z" },
     { id: "s-sav", institution: "Ally", name: "Online Savings", mask: "0937", type: "savings", tier: "reserve", balanceCents: 1_150_000, balanceAsOf: "2026-11-13T06:40:00Z" },
     { id: "s-roth", institution: "Fidelity", name: "Roth IRA", mask: "3306", type: "investment", tier: "long_term", balanceCents: 3_120_000, balanceAsOf: "2026-11-12T22:00:00Z" },
+    { id: "s-fed", institution: "MOHELA", name: "Federal Direct + Grad PLUS loans", mask: "2210", type: "loan", tier: "excluded", balanceCents: -5_340_000, balanceAsOf: "2026-11-12T22:00:00Z" },
     { id: "s-card", institution: "Chase", name: "Sapphire Preferred", mask: "7710", type: "credit_card", tier: "excluded", balanceCents: -124_000, balanceAsOf: "2026-11-13T07:12:00Z" },
   ],
 

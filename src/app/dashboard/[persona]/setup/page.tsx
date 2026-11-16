@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import { SetupView } from "@/components/SetupView";
 import { DEMO_PROFILES, getDemoProfile } from "@/lib/demo";
 
-export const metadata = { title: "Runway · Setup" };
+export const metadata = { title: "Runway · Account Details" };
 
 export function generateStaticParams() {
   return DEMO_PROFILES.map((p) => ({ persona: p.slug }));

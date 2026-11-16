@@ -10,7 +10,7 @@ export function Card({ title, subtitle, children, className = "", action }: { ti
       {(title || action) && (
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
-            {title && <h2 className="font-display text-lg font-bold leading-tight">{title}</h2>}
+            {title && <h2 className="font-display text-lg font-bold leading-tight text-accent-strong">{title}</h2>}
             {subtitle && <p className="mt-0.5 text-sm text-muted">{subtitle}</p>}
           </div>
           {action}

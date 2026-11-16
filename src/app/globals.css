@@ -89,6 +89,26 @@ dialog.drawer::backdrop {
   dialog.drawer[open] { animation: none; }
 }
 
+/* Category headers: deep green with a small sun-yellow bar. Quiet, but not grey. */
+.cat-head {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-strong);
+}
+.cat-head::before {
+  content: "";
+  width: 3px;
+  height: 0.85em;
+  border-radius: 2px;
+  background: var(--sun);
+  box-shadow: 0 0 0 1px rgba(154, 106, 0, 0.15);
+}
+
 .tabular {
   font-variant-numeric: tabular-nums;
 }

@@ -64,3 +64,8 @@ export function usdCompact(cents: number): string {
 export function ceilHundred(cents: number): number {
   return Math.ceil(cents / 10_000) * 10_000;
 }
+
+/** True if any account's balance is 3+ days old (the forecast may be off). */
+export function hasStaleAccount(p: { today: string; accounts: { balanceAsOf: string }[] }): boolean {
+  return p.accounts.some((a) => daysBetween(a.balanceAsOf.slice(0, 10), p.today) >= 3);
+}

@@ -52,9 +52,13 @@ describe("forecast engine", () => {
     const f = forecast(simpleProfile({ plannedEvents: [{ id: "x", name: "Big bill", kind: "other", amountCents: -300_000, dueDate: "2026-11-20" }] }));
     // Day 7 is the last day of week 1 (Nov 14–20).
     expect(f.weeks[0].base).toBe(-200_000);
+    expect(f.weeks[0].endBase).toBe(-200_000); // week 1 ends on the day it lands
+    expect(f.weeks[1].endBase).toBe(-200_000); // nothing else happens
     expect(f.weeks[0].status).toBe("short"); // −$2,000 in checking, $5,000 in savings
     expect(f.windows[0].fix?.kind).toBe("move");
     expect(f.windows[0].fix?.amount).toBe(220_000); // $2,000 + $200 cushion
+    expect(f.windows[0].fix?.legs).toEqual([{ accountId: "sav", account: "Bank Savings", amount: 220_000, balance: 500_000 }]);
+    expect(f.windows[0].fix?.to).toBe("Bank Checking");
   });
 
   it("calls a dip savings can't cover a shortfall", () => {
@@ -62,6 +66,31 @@ describe("forecast engine", () => {
     expect(f.weeks[0].status).toBe("shortfall");
     expect(f.windows[0].fix?.kind).toBe("shortfall");
     expect(f.windows[0].fix?.amount).toBe(300_000); // −$8,000 + $5,000 savings = $3,000 short
+  });
+
+  it("checking + savings scope: savings count, so a dip savings can cover isn't flagged", () => {
+    const p = simpleProfile({ plannedEvents: [{ id: "x", name: "Big bill", kind: "other", amountCents: -300_000, dueDate: "2026-11-20" }] });
+    const f = forecast(p, { scope: "cash" });
+    expect(f.scope).toBe("cash");
+    expect(f.startBalance).toBe(600_000); // $1,000 checking + $5,000 savings
+    expect(f.weeks[0].base).toBe(300_000);
+    expect(f.weeks[0].status).toBe("ok");
+    expect(forecast(p).weeks[0].status).toBe("short"); // same profile, checking only
+  });
+
+  it("checking + savings scope: a real shortfall is the amount below $0 across both", () => {
+    const f = forecast(simpleProfile({ plannedEvents: [{ id: "x", name: "Huge bill", kind: "other", amountCents: -900_000, dueDate: "2026-11-20" }] }), { scope: "cash" });
+    expect(f.weeks[0].base).toBe(-300_000);
+    expect(f.weeks[0].status).toBe("shortfall");
+    expect(f.windows[0].fix?.amount).toBe(300_000); // not double-counting savings
+  });
+
+  it("checking + savings scope: transfers into savings don't lower the balance", () => {
+    const p = simpleProfile({
+      recurringBills: [{ id: "save", name: "To savings", category: "transfer", cadence: "weekly", firstDate: "2026-11-16", amountCents: -20_000, amountSpreadCents: 0, toAccountId: "sav", essential: false }],
+    });
+    expect(forecast(p).weeks[11].endBase).toBe(100_000 - 12 * 20_000); // checking drains into savings
+    expect(forecast(p, { scope: "cash" }).weeks[11].endBase).toBe(600_000); // total cash unchanged
   });
 
   it("delays income in the cautious case and leaves uncertain income out of it", () => {

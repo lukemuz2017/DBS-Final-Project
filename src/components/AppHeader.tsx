@@ -4,12 +4,12 @@ import Link from "next/link";
 import type { Profile } from "@/lib/types";
 import { PersonaSwitcher } from "./ui";
 
-type Section = "transactions" | "upcoming" | "setup";
+type Section = "setup";
 
-export function AppHeader({ profiles, active, section }: { profiles: Profile[]; active: string; section?: Section }) {
+export function AppHeader({ profiles, active, section, setupAlert }: { profiles: Profile[]; active: string; section?: Section; setupAlert?: boolean }) {
   const tabs = [
-    { label: "Forecast", href: `/dashboard/${active}`, on: section === undefined || section === "upcoming" || section === "transactions" },
-    { label: "Setup", href: `/dashboard/${active}/setup`, on: section === "setup" },
+    { label: "Forecast", href: `/dashboard/${active}`, on: section === undefined, alert: false },
+    { label: "Account Details", href: `/dashboard/${active}/setup`, on: section === "setup", alert: Boolean(setupAlert) },
   ];
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-bg/85 backdrop-blur">
@@ -26,9 +26,11 @@ export function AppHeader({ profiles, active, section }: { profiles: Profile[]; 
                 key={t.label}
                 href={t.href}
                 aria-current={t.on ? "page" : undefined}
-                className={`rounded-lg px-3 py-1.5 text-sm font-bold ${t.on ? "bg-accent-soft text-accent-strong" : "text-muted hover:bg-accent-soft hover:text-ink"}`}
+                title={t.alert ? "An account has not synced in a few days" : undefined}
+                className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-bold ${t.on ? "bg-accent-soft text-accent-strong" : "text-muted hover:bg-accent-soft hover:text-ink"}`}
               >
                 {t.label}
+                {t.alert && <span className="size-2 rounded-full bg-[var(--tight)]" aria-label="an account is out of date" />}
               </Link>
             ))}
           </nav>

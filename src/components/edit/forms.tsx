@@ -399,7 +399,7 @@ export function BillForm({ bill, p, onSave, onDelete, onCancel }: Done & { bill?
       ) : (
         <Check checked={essential} onChange={setEssential}>
           <span className="font-bold">Essential</span>
-          <span className="block text-xs text-muted">Counts toward “runway if income stopped”. Turn off for things you&apos;d cancel.</span>
+          <span className="block text-xs text-muted">Counts toward your Cash Runway. Turn off for things you&apos;d cancel.</span>
         </Check>
       )}
       {error && <p className="text-sm font-bold text-warn" role="alert">{error}</p>}
