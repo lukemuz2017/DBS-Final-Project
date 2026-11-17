@@ -1,10 +1,9 @@
 "use client";
 
-import { upcoming, type Forecast } from "@/lib/engine/forecast";
+import type { Forecast } from "@/lib/engine/forecast";
 import { daysBetween, fmtDate, fmtDay, toDate, usd } from "@/lib/format";
 import type { Profile } from "@/lib/types";
 import { useState } from "react";
-import type { GlossaryKey } from "@/lib/glossary";
 import { PencilIcon, PlusIcon, SmallButton } from "./edit/fields";
 import { InfoTip } from "./InfoTip";
 import { Card, Chip, Meter } from "./ui";
@@ -15,34 +14,28 @@ import { Card, Chip, Meter } from "./ui";
 // ---------------------------------------------------------------------------
 // Stat tiles
 
-export function StatTiles({ f }: { f: Forecast }) {
-  const next = upcoming(f, 84).find((e) => e.kind === "income");
-  const bill = upcoming(f, 84).find((e) => e.kind !== "income" && e.kind !== "transfer" && e.amount.base <= -50_000);
+/** Cash today and runway, side by side in one compact panel next to the headline. */
+export function HeroStats({ f }: { f: Forecast }) {
   const runwayWeeks = Math.floor(f.runway.weeks);
   const onTarget = f.runway.weeks >= f.runway.target;
   return (
-    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      <Tile term="cashToday" label="Cash today" value={usd(f.operatingToday + f.reserveToday)} sub={`${usd(f.operatingToday)} checking · ${usd(f.reserveToday)} savings`} />
-      <div className="card p-4">
+    <div className="card grid grid-cols-2 divide-x divide-line bg-surface/90">
+      <div className="p-4">
+        <div className="text-xs font-bold text-accent-strong"><InfoTip term="cashToday">Cash today</InfoTip></div>
+        <div className="tabular mt-1 text-2xl font-extrabold">{usd(f.operatingToday + f.reserveToday)}</div>
+        <div className="mt-1 text-xs text-muted">
+          {usd(f.operatingToday)} checking · {usd(f.reserveToday - f.taxEarmarkToday)} savings
+          {f.taxEarmarkToday > 0 && <> · <InfoTip term="taxEarmark">{usd(f.taxEarmarkToday)} for taxes</InfoTip></>}
+        </div>
+      </div>
+      <div className="p-4">
         <div className="text-xs font-bold text-accent-strong"><InfoTip term="runway">Cash Runway</InfoTip></div>
-        <div className="mt-1 text-2xl font-extrabold">{runwayWeeks} weeks</div>
+        <div className="mt-1 text-2xl font-extrabold">{runwayWeeks} <span className="text-base font-bold text-muted">of {f.runway.target} weeks</span></div>
         <div className="mt-2">
           <Meter value={f.runway.weeks} max={f.runway.target} tone={onTarget ? "accent" : f.runway.weeks >= f.runway.target * 0.6 ? "tight" : "warn"} label="Runway against target" />
         </div>
-        <div className="mt-1.5 text-xs text-muted">Target {f.runway.target} weeks (about {Math.round(f.runway.target / 4.33)} months) · <InfoTip term="burn">burn {usd(f.runway.weeklyBurn)}/wk</InfoTip></div>
+        <div className="mt-1 text-xs text-muted"><InfoTip term="burn">At {usd(f.runway.weeklyBurn)}/week</InfoTip></div>
       </div>
-      <Tile term="nextIn" label="Next money in" value={next ? usd(next.amount.base) : "None expected"} sub={next ? `${fmtDay(next.date.base)} · ${next.sourceName ?? next.label}` : "in the next 12 weeks"} />
-      <Tile term="nextBill" label="Next big bill" value={bill ? usd(-bill.amount.base) : "Nothing over $500"} sub={bill ? `${fmtDay(bill.date.base)} · ${bill.label}` : "in the next 12 weeks"} />
-    </div>
-  );
-}
-
-function Tile({ term, label, value, sub }: { term: GlossaryKey; label: string; value: string; sub: string }) {
-  return (
-    <div className="card p-4">
-      <div className="text-xs font-bold text-accent-strong"><InfoTip term={term}>{label}</InfoTip></div>
-      <div className="mt-1 text-2xl font-extrabold">{value}</div>
-      <div className="mt-1 text-xs text-muted">{sub}</div>
     </div>
   );
 }

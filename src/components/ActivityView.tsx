@@ -77,7 +77,7 @@ export function ActivityList({ p, mode, onEditItem, onAdd }: {
         date: e.date.base,
         label: e.label,
         amount: e.amount.base,
-        note: e.kind === "income" && e.date.low !== e.date.base ? `Income · could slip to ${fmtDate(e.date.low)} in the cautious case` : NOTE[e.kind],
+        note: e.kind === "income" && e.date.low !== e.date.base ? `Income · could slip to ${fmtDate(e.date.low)} in the low case` : NOTE[e.kind],
         muted: e.kind === "transfer",
         event: e,
       }));
@@ -92,7 +92,7 @@ export function ActivityList({ p, mode, onEditItem, onAdd }: {
       title={isUpcoming ? "Upcoming" : "Recent activity"}
       subtitle={
         isUpcoming ? (
-          <>The next 12 weeks in the <InfoTip term="likely">likely case</InfoTip>. Click an item to edit it. Everyday spending (about {usd(p.spending.weeklyMeanCents)}/week) isn&apos;t listed.</>
+          <>The next 12 weeks in the <InfoTip term="likely">expected case</InfoTip>. Click an item to edit it. Everyday spending (about {usd(p.spending.weeklyMeanCents)}/week) isn&apos;t listed.</>
         ) : (
           "Last 60 days, newest first. Transfers between your own accounts aren't spending, so they're left out of the totals."
         )

@@ -4,6 +4,7 @@ A 12-week cash forecast for people with lumpy income (freelancers and students f
 
 - Product: `public/proposal/v2.html` (the current plan; `public/proposal/index.html` is the original, leave it alone).
 - Data model: `docs/data-model.html`. Read it before touching the schema.
+- **UI decisions:** settled naming, layout and money logic from iteration with the user, plus open items. Imported below so every session has it. Update `docs/design-decisions.md` when the user settles something new.
 - Research: `research_notes/` and `reports/`. Background only; don't load unless asked.
 
 ## Stack
@@ -11,6 +12,8 @@ A 12-week cash forecast for people with lumpy income (freelancers and students f
 Next.js 16 (App Router, TypeScript, Tailwind v4) on Vercel · Supabase (Postgres, Auth, row-level security) · charts are hand-built SVG (`src/components/ForecastChart.tsx`), not Chart.js · Claude API only for the stretch-goal assistant. Bank data sits behind one provider interface: Plaid Sandbox, Teller dev and CSV import come later.
 
 @AGENTS.md
+
+@docs/design-decisions.md
 
 **Current phase: dummy data only.** No bank connections yet; don't add Plaid or Teller code unless the user asks. Three demo personas live in code at `src/lib/demo/`: Priya (Booth MBA student, Chicago), Jordan (freelance photographer, Brooklyn) and Sam (gig worker turned salaried, LA). Their shapes in `src/lib/types.ts` mirror the data model, so a `fixture` provider can later seed them into Supabase without changing the engine or UI. Keep their numbers realistic for their city and situation. Focus is UI/UX and the forecast engine.
 
@@ -22,9 +25,10 @@ Next.js 16 (App Router, TypeScript, Tailwind v4) on Vercel · Supabase (Postgres
 - `npm test` (Vitest): engine tests in `src/lib/engine/*.test.ts`.
 - `npm run typecheck` / `npm run lint`.
 - `npm run peek`: prints each persona's forecast in the terminal.
+- `npx tsx scripts/peek-plan.ts`: prints pay-yourself, payment splits, retirement and refund plans per persona.
 - After moving or deleting route files, run `npx next typegen` before `tsc`. Next 16 generates route types into `.next/`.
 
-Layout: `src/lib/engine/forecast.ts` (pure engine) · `src/lib/demo/` (personas) · `src/components/` (UI) · `src/app/dashboard/[persona]/page.tsx` (dashboard) · `src/lib/supabase/` (clients; not used by the demo yet) · `src/app/api/health` (dev-only Supabase key check).
+Layout: `src/lib/engine/forecast.ts` (pure engine) · `src/lib/engine/plan.ts` (pay yourself, payment splits, retirement, refund plan) · `src/lib/engine/goals.ts` · `src/lib/demo/` (personas) · `src/components/` (UI; `forecastPanels.tsx` week tiles/details/goals, `freelanceSection.tsx` Payday Plan/Tax/Pay yourself, `planCards.tsx` retirement/refund plan, `suggestions.tsx` move flows and hover cards) · `src/app/dashboard/[persona]/page.tsx` (dashboard) · `src/lib/supabase/` (clients; not used by the demo yet) · `src/app/api/health` (dev-only Supabase key check).
 
 ## Rules that keep the numbers right
 

@@ -26,7 +26,8 @@ export const student: Profile = {
     { id: "s-chk", institution: "Chase", name: "Total Checking", mask: "4821", type: "checking", tier: "operating", balanceCents: 690_000, balanceAsOf: "2026-11-13T07:12:00Z" },
     { id: "s-sav", institution: "Ally", name: "Online Savings", mask: "0937", type: "savings", tier: "reserve", balanceCents: 1_150_000, balanceAsOf: "2026-11-13T06:40:00Z" },
     { id: "s-roth", institution: "Fidelity", name: "Roth IRA", mask: "3306", type: "investment", tier: "long_term", balanceCents: 3_120_000, balanceAsOf: "2026-11-12T22:00:00Z" },
-    { id: "s-fed", institution: "MOHELA", name: "Federal Direct + Grad PLUS loans", mask: "2210", type: "loan", tier: "excluded", balanceCents: -5_340_000, balanceAsOf: "2026-11-12T22:00:00Z" },
+    { id: "s-fed", institution: "MOHELA", name: "Federal Direct Unsubsidized loan", mask: "2210", type: "loan", tier: "excluded", balanceCents: -683_300, balanceAsOf: "2026-11-12T22:00:00Z" },
+    { id: "s-priv", institution: "Sallie Mae", name: "Private graduate loan", mask: "8846", type: "loan", tier: "excluded", balanceCents: -3_526_700, balanceAsOf: "2026-11-12T22:00:00Z" },
     { id: "s-card", institution: "Chase", name: "Sapphire Preferred", mask: "7710", type: "credit_card", tier: "excluded", balanceCents: -124_000, balanceAsOf: "2026-11-13T07:12:00Z" },
   ],
 
@@ -41,7 +42,7 @@ export const student: Profile = {
       payDelayNote: "Disbursed to Booth before the quarter starts; the leftover after tuition usually reaches checking 3–8 days later.",
       taxWithheld: true,
       payments: [{ label: "Winter-quarter loan refund", expectedDate: "2027-01-07", earliestDate: "2027-01-06", latestDate: "2027-01-12", amountCents: 1_420_000 }],
-      summary: "≈ $14,200 per quarter, after tuition (federal + private loans)",
+      summary: "≈ $14,200 per quarter, after tuition (federal Direct Unsubsidized + private loans)",
     },
     {
       id: "s-ca",
@@ -87,6 +88,14 @@ export const student: Profile = {
     { id: "s-g1", name: "Cushion for the summer internship gap", kind: "emergency_fund", targetCents: 400_000, targetDate: "2027-06-15", savedCents: 0, monthlyContributionCents: 60_000 },
     { id: "s-g2", name: "Japan Trek (spring break)", kind: "travel", targetCents: 380_000, targetDate: "2027-03-15", savedCents: 120_000, monthlyContributionCents: 90_000 },
   ],
+
+  studentLoans: {
+    followingRefundDate: "2027-03-30", // spring quarter refund
+    federalRatePct: 8.07, // 2026-27 graduate Direct Unsubsidized
+    privateRatePct: 9.25, // illustrative fixed private rate
+    federalPerTermCents: 683_300, // $20,500 a year over three quarters
+    nextDisbursementDate: "2027-01-07",
+  },
 
   history: [
     { label: "Left consulting job", date: "2026-08-14" },

@@ -133,6 +133,31 @@ describe("forecast engine", () => {
     expect(f.tax?.covered).toBe(true); // $5,000 set aside
   });
 
+  it("treats tax savings as earmarked: estimated tax is paid from it first, and it never covers other bills", () => {
+    // Checking $1,000; tax savings ("sav") $5,000 earmarked; a separate $2,000 emergency fund.
+    const p = simpleProfile({
+      accounts: [
+        ...simpleProfile().accounts,
+        { id: "emg", institution: "Bank", name: "Emergency", mask: "0003", type: "savings", tier: "reserve", balanceCents: 200_000, balanceAsOf: "2026-11-13T00:00:00Z" },
+      ],
+      tax: { setAsidePct: 30, receivedThisPeriodCents: 2_000_000, periodLabel: "", periodEnd: "2026-12-31", dueDate: "2026-11-20", reserveAccountId: "sav", note: "" },
+      plannedEvents: [{ id: "rent", name: "Rent", kind: "other", amountCents: -150_000, dueDate: "2026-11-18" }],
+    });
+    const f = forecast(p);
+    // Tax is $6,000: $5,000 from tax savings, $1,000 from checking. Rent $1,500. Checking: 1,000 - 1,500 - 1,000.
+    const tax = f.events.find((e) => e.kind === "tax")!;
+    expect(tax.amount.base).toBe(-600_000);
+    expect(tax.earmarkedCents).toBe(500_000);
+    expect(f.weeks[0].base).toBe(-150_000);
+    // The fix draws only from the emergency fund, never from tax savings.
+    expect(f.windows[0].fix?.legs?.map((l) => l.accountId)).toEqual(["emg"]);
+    // Runway counts checking + the emergency fund, never tax savings.
+    expect(f.taxEarmarkToday).toBe(500_000);
+    expect(f.runway.liquid).toBe(100_000 + 200_000);
+    // Checking + savings view: the whole tax leaves cash, so nothing is earmarked there.
+    expect(forecast(p, { scope: "cash" }).events.find((e) => e.kind === "tax")!.earmarkedCents).toBeUndefined();
+  });
+
   it("widens the range further out (spending uncertainty grows with time)", () => {
     const f = forecast(simpleProfile({ spending: { weeklyMeanCents: 10_000, weeklySdCents: 5_000 } }));
     const spread = (i: number) => f.weeks[i].high - f.weeks[i].low;

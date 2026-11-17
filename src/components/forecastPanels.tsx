@@ -2,7 +2,7 @@
 
 import type { Forecast, Status, WeekResult } from "@/lib/engine/forecast";
 import { goalPace, type GoalPace } from "@/lib/engine/goals";
-import { addDays, daysBetween, fmtDate, fmtDay, fmtRange, toDate, usd } from "@/lib/format";
+import { daysBetween, fmtDate, fmtDay, fmtRange, toDate, usd } from "@/lib/format";
 import type { Profile } from "@/lib/types";
 import { PencilIcon, PlusIcon, SmallButton } from "./edit/fields";
 import type { ReactNode } from "react";
@@ -70,13 +70,14 @@ export function WeekDetail({ f, week, onClose, backLabel = "Close" }: { f: Forec
     .filter((e) => e.included.base && e.date.base >= week.start && e.date.base <= week.end)
     .filter((e) => !(f.scope === "cash" && e.toReserve))
     .sort((a, b) => (a.date.base < b.date.base ? -1 : 1));
-  // Income that could land this week only in the cautious case (it slipped in from earlier).
+  // Income that could land this week only in the low case (it slipped in from earlier).
   const slipping = f.events.filter((e) => e.kind === "income" && e.included.low && e.date.base < week.start && e.date.low >= week.start && e.date.low <= week.end);
   const win = f.windows[Math.ceil(week.index / 2) - 1];
   const lead = win.continuesFrom ? f.windows[win.continuesFrom - 1] : win;
   const startBal = week.index === 1 ? f.startBalance : f.weeks[week.index - 2].endBase;
-  const inflow = items.filter((e) => e.amount.base > 0).reduce((s, e) => s + e.amount.base, 0);
-  const outflow = items.filter((e) => e.amount.base < 0).reduce((s, e) => s + e.amount.base, 0);
+  const hit = (e: (typeof items)[number]) => e.amount.base + (e.earmarkedCents ?? 0);
+  const inflow = items.filter((e) => hit(e) > 0).reduce((s, e) => s + hit(e), 0);
+  const outflow = items.filter((e) => hit(e) < 0).reduce((s, e) => s + hit(e), 0);
 
   return (
     <section id="week-detail" className="mt-1 rounded-2xl border border-line bg-[#fffdf9] p-4 sm:p-5" aria-label={`Week ${week.index} details`}>
@@ -92,14 +93,14 @@ export function WeekDetail({ f, week, onClose, backLabel = "Close" }: { f: Forec
       <div className="mt-3 grid gap-4 md:grid-cols-[1fr_1.3fr]">
         <div className="space-y-3">
           <dl className="grid grid-cols-3 gap-2 text-center">
-            {([["cautious", "Cautious", week.low], ["likely", "Likely", week.base], ["good", "Good", week.high]] as const).map(([term, label, v]) => (
-              <div key={label} className={`rounded-xl p-2.5 ${label === "Likely" ? "bg-accent-soft" : "bg-[#f6f1e9]"}`}>
+            {([["cautious", "Low", week.low], ["likely", "Expected", week.base], ["good", "High", week.high]] as const).map(([term, label, v]) => (
+              <div key={label} className={`rounded-xl bg-[#f8f4ee] p-2.5 ${label === "Expected" ? "ring-2 ring-accent/45" : "ring-1 ring-line"}`}>
                 <dt className="text-[11px] font-bold text-accent-strong"><InfoTip term={term}>{label}</InfoTip></dt>
-                <dd className={`tabular mt-0.5 font-extrabold ${v < 0 ? "text-warn" : ""}`}>{usd(v)}</dd>
+                <dd className={`tabular mt-0.5 font-extrabold ${label === "Expected" ? "text-xl" : ""} ${v < 0 ? "text-warn" : ""}`}>{usd(v)}</dd>
               </div>
             ))}
           </dl>
-          <p className="text-xs text-muted">Lowest {f.scope === "cash" ? "checking + savings" : "checking"} balance during the week. Low point (cautious case) around {fmtDate(week.lowMinDate)}.</p>
+          <p className="text-xs text-muted">Lowest {f.scope === "cash" ? "checking + savings" : "checking"} balance during the week. The low case bottoms out around {fmtDate(week.lowMinDate)}.</p>
           <dl className="divide-y divide-line rounded-xl bg-surface px-3 text-sm ring-1 ring-line">
             <div className="flex justify-between py-1.5"><dt className="text-muted">Starts the week at</dt><dd className="tabular font-bold">{usd(startBal)}</dd></div>
             <div className="flex justify-between py-1.5"><dt className="text-muted">Money in</dt><dd className="tabular font-bold text-accent-strong">{usd(inflow, { sign: true })}</dd></div>
@@ -111,7 +112,7 @@ export function WeekDetail({ f, week, onClose, backLabel = "Close" }: { f: Forec
         </div>
 
         <div>
-          <h4 className="cat-head">What lands this week</h4>
+          <h4 className="cat-head">Weekly Transactions</h4>
           {items.length === 0 ? (
             <p className="mt-2 text-sm text-muted">Nothing scheduled, just everyday spending.</p>
           ) : (
@@ -122,6 +123,7 @@ export function WeekDetail({ f, week, onClose, backLabel = "Close" }: { f: Forec
                     <span className="inline-block w-24 text-muted">{fmtDay(e.date.base)}</span>
                     <span className={e.kind === "transfer" ? "text-muted" : "font-bold"}>{e.label}</span>
                     <span className="ml-1.5 text-[11px] text-muted">{KIND_TAG[e.kind]}</span>
+                    {e.earmarkedCents ? <span className="block pl-24 text-[11px] text-muted">{usd(e.earmarkedCents)} from tax savings · {usd(-hit(e))} from checking</span> : null}
                   </span>
                   <span className={`tabular shrink-0 font-bold ${e.amount.base > 0 ? "text-accent-strong" : e.kind === "transfer" ? "text-muted" : ""}`}>{usd(e.amount.base, { sign: true })}</span>
                 </li>
@@ -130,7 +132,7 @@ export function WeekDetail({ f, week, onClose, backLabel = "Close" }: { f: Forec
           )}
           {slipping.length > 0 && (
             <p className="mt-2 text-xs text-muted">
-              In the cautious case, {slipping.map((e) => `${e.label} (${usd(e.amount.base)})`).join(" and ")} could slip into this week.
+              In the low case, {slipping.map((e) => `${e.label} (${usd(e.amount.base)})`).join(" and ")} could slip into this week.
             </p>
           )}
           {week.status !== "ok" && lead.reasons && (
@@ -244,7 +246,7 @@ function PaceTimeline({ x, today }: { x: GoalPace; today: string }) {
         <Marker left={pos(target)} label={`Target ${fmtMonth(target)}`} tone="ink" below />
         {reach && <Marker left={pos(reach)} label={`At this pace ${fmtMonth(reach)}`} tone={x.status === "late" ? "tight" : "accent"} />}
       </div>
-      <div className="mt-1 flex justify-between text-[10px] text-muted"><span>Today</span><span>{fmtMonth(addDays(end, 0))}</span></div>
+      <div className="mt-1 flex justify-between text-[10px] text-muted"><span>Today</span>{end !== target && <span>{fmtMonth(end)}</span>}</div>
     </div>
   );
 }

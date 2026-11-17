@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { GoalsPanel, WeekDetail, WeekStrip } from "@/components/forecastPanels";
+import { RefundPlanCard, RetirementCard } from "@/components/planCards";
+import { FreelanceSection } from "@/components/freelanceSection";
 import { flaggedRuns, runForWeek, SuggestionsButton, WeekTip } from "@/components/suggestions";
 import { ForecastChart } from "@/components/ForecastChart";
 import { AppHeader } from "@/components/AppHeader";
@@ -9,7 +11,7 @@ import { InfoTip } from "@/components/InfoTip";
 import { DemoBanner, useEditor } from "@/components/edit/Editor";
 import { PencilIcon } from "@/components/edit/fields";
 import {
-  StatTiles,
+  HeroStats,
   TaxCard,
   TaxSetupCard,
   TermCard,
@@ -61,7 +63,7 @@ export function DashboardView({ base, profiles }: { base: Profile; profiles: Pro
 
       <div className="hero-glow border-b border-line">
         <div className="mx-auto max-w-6xl px-4 pb-6 pt-6 sm:px-6">
-          <div>
+          <div className="grid gap-5 md:grid-cols-[1fr_minmax(0,440px)] md:items-end">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-accent">{p.role} · {p.neighborhood}, {p.city}</p>
@@ -71,10 +73,7 @@ export function DashboardView({ base, profiles }: { base: Profile; profiles: Pro
               </div>
               <h1 className="mt-2 font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl">{first}&apos;s next 12 weeks</h1>
             </div>
-          </div>
-          {/* Key numbers live in the hero so the top of the page answers the main questions. */}
-          <div className="mt-5">
-            <StatTiles f={f} />
+            <HeroStats f={f} />
           </div>
         </div>
       </div>
@@ -110,7 +109,7 @@ export function DashboardView({ base, profiles }: { base: Profile; profiles: Pro
 
           {view === "forecast" ? (
             <div role="tabpanel" id="panel-forecast" aria-labelledby="tab-forecast">
-              <WeekStrip f={fv} selected={week} onSelect={setWeek} tipFor={(i) => <WeekTip week={fv.weeks[i - 1]} r={runForWeek(runs, i)} />} />
+              <WeekStrip f={fv} selected={week} onSelect={setWeek} tipFor={(i) => <WeekTip week={fv.weeks[i - 1]} r={runForWeek(runs, i)} onOpen={() => setWeek(i)} />} />
               {/* Chart and table show the same numbers; the toggle swaps one for the other. */}
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
                 <div className="flex flex-wrap items-center gap-2">
@@ -121,9 +120,6 @@ export function DashboardView({ base, profiles }: { base: Profile; profiles: Pro
                       </button>
                     ))}
                   </div>
-                  <span className="text-xs text-muted">
-                    <InfoTip term={scope === "cash" ? "scopeCash" : "scopeChecking"}>{scope === "cash" ? `Starts at ${usd(fCash.startBalance)}: checking + savings` : `Starts at ${usd(f.startBalance)} in checking`}</InfoTip>
-                  </span>
                 </div>
                 <div role="group" aria-label="Show forecast as" className="inline-flex gap-0.5 rounded-lg bg-[#f1ece4] p-0.5 text-xs font-bold">
                   {([["chart", "Chart"], ["table", "Table"]] as const).map(([k, label]) => (
@@ -140,12 +136,12 @@ export function DashboardView({ base, profiles }: { base: Profile; profiles: Pro
                   {/* On phones the chart keeps a readable size and scrolls sideways inside its card. */}
                   <div className="-mx-1 mt-1 overflow-x-auto px-1">
                     <div className="min-w-[560px]">
-                      <ForecastChart weeks={chartWeeksFor(fv)} selected={week} onSelect={setWeek} title={`${first}'s lowest ${scope === "cash" ? "checking + savings" : "checking"} balance each week, ${fmtRange(f.weeks[0].start, f.weeks[11].end)}: likely case with a cautious-to-good range`} />
+                      <ForecastChart weeks={chartWeeksFor(fv)} selected={week} onSelect={setWeek} title={`${first}'s lowest ${scope === "cash" ? "checking + savings" : "checking"} balance each week, ${fmtRange(f.weeks[0].start, f.weeks[11].end)}: expected case with a cautious-to-good range`} />
                     </div>
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted">
-                    <span className="inline-flex items-center gap-1.5"><span className="inline-block h-0.5 w-4 rounded bg-accent" /> <InfoTip term="likely">Likely case</InfoTip></span>
-                    <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2.5 w-4 rounded-sm bg-accent/15" /> <InfoTip term="range">Cautious to good range</InfoTip></span>
+                    <span className="inline-flex items-center gap-1.5"><span className="inline-block h-0.5 w-4 rounded bg-accent" /> <InfoTip term="likely">Expected case</InfoTip></span>
+                    <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2.5 w-4 rounded-sm bg-accent/15" /> <InfoTip term="range">Low to high range</InfoTip></span>
                     {fv.weeks.some((w) => w.status === "short") && <span className="inline-flex items-center gap-1.5"><span className="inline-block size-2.5 rounded-full bg-warn" /> Week that needs a move</span>}
                     {fv.weeks.some((w) => w.status === "shortfall") && <span className="inline-flex items-center gap-1.5"><span className="inline-block size-2.5 rounded-full bg-warn" /> Week that&apos;s short even with savings</span>}
                   </div>
@@ -154,7 +150,7 @@ export function DashboardView({ base, profiles }: { base: Profile; profiles: Pro
                 <div className="mt-1 overflow-x-auto">
                   <table className="w-full min-w-[620px] text-left text-sm text-ink">
                     <thead className="text-xs text-muted">
-                      <tr><th className="py-2 pr-3">Week</th><th className="pr-3">Dates</th><th className="pr-3 text-right"><InfoTip term="cautious">Cautious</InfoTip></th><th className="pr-3 text-right"><InfoTip term="likely">Likely</InfoTip></th><th className="pr-3 text-right"><InfoTip term="good">Good</InfoTip></th><th className="pr-3 text-right">Ends week at</th><th>Status</th></tr>
+                      <tr><th className="py-2 pr-3">Week</th><th className="pr-3">Dates</th><th className="pr-3 text-right"><InfoTip term="cautious">Low</InfoTip></th><th className="pr-3 text-right"><InfoTip term="likely">Expected</InfoTip></th><th className="pr-3 text-right"><InfoTip term="good">High</InfoTip></th><th className="pr-3 text-right">Ends week at</th><th>Status</th></tr>
                     </thead>
                     <tbody className="tabular">
                       {fv.weeks.map((w) => (
@@ -176,7 +172,20 @@ export function DashboardView({ base, profiles }: { base: Profile; profiles: Pro
             </div>
           ) : (
             <div role="tabpanel" id="panel-goals" aria-labelledby="tab-goals">
-              <GoalsPanel p={p} onEdit={(id) => edit({ kind: "goal", id })} />
+              <div className="space-y-8">
+                {p.profileType !== "student" && p.retirement && (
+                  <section>
+                    <h3 className="mb-3 font-display text-xl font-bold text-accent-strong">
+                      <InfoTip term={p.profileType === "freelance" ? "retirementSelf" : "retirementEmployer"}>Retirement</InfoTip>
+                    </h3>
+                    <RetirementCard p={p} />
+                  </section>
+                )}
+                <section className={p.profileType !== "student" && p.retirement ? "border-t border-line pt-6" : ""}>
+                  <h3 className="mb-3 font-display text-xl font-bold text-accent-strong">Your goals</h3>
+                  <GoalsPanel p={p} onEdit={(id) => edit({ kind: "goal", id })} />
+                </section>
+              </div>
             </div>
           )}
         </section>
@@ -184,7 +193,16 @@ export function DashboardView({ base, profiles }: { base: Profile; profiles: Pro
 
         {/* Dashboard = forecast and what to do about it. Accounts, income sources and the
             full bill list live on the Setup page. */}
-        {sideCard && <div className="grid items-start gap-5 md:grid-cols-2">{sideCard}</div>}
+        {view === "forecast" && p.profileType === "freelance" && (
+          <FreelanceSection p={p} f={f} onEditTax={() => edit({ kind: "profile" })} taxFallback={<TaxSetupCard onEdit={() => edit({ kind: "profile" })} />} />
+        )}
+        {view === "forecast" && p.profileType === "student" && (
+          <div className="grid items-start gap-5 md:grid-cols-2">
+            <RefundPlanCard p={p} />
+            {sideCard}
+          </div>
+        )}
+        {view === "forecast" && p.profileType === "steady" && sideCard && <div className="grid items-start gap-5 md:grid-cols-2">{sideCard}</div>}
       </main>
 
       <footer className="mx-auto w-full max-w-6xl px-4 pb-10 text-xs text-muted sm:px-6">

@@ -156,6 +156,14 @@ export const freelance: Profile = {
     { id: "f-g2", name: "Replace the Z6 II body", kind: "other", targetCents: 250_000, targetDate: "2027-04-30", savedCents: 0, monthlyContributionCents: 0 },
   ],
 
+  retirement: {
+    plan: "sep_ira",
+    accountId: "f-sep",
+    ytdContributedCents: 300_000,
+    estNetProfitCents: 6_800_000, // about $68k net profit for 2026
+    windfallPct: 10,
+  },
+
   history: [
     { label: "Went full-time freelance", date: "2023-03-01" },
     { label: "Wedding season ended", date: "2026-10-24" },

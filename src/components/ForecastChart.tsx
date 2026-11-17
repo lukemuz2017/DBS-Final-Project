@@ -74,7 +74,7 @@ export function ForecastChart({ weeks, title, selected, onSelect }: { weeks: Cha
   const tipLeftPct = active !== null ? (x(active) / W) * 100 : 0;
 
   return (
-    <figure className="relative m-0">
+    <figure className="relative m-0" onPointerLeave={() => setActive(null)}>
       <figcaption className="sr-only">{title}</figcaption>
       <svg
         ref={svgRef}
@@ -84,7 +84,6 @@ export function ForecastChart({ weeks, title, selected, onSelect }: { weeks: Cha
         aria-label={`${title}. Use left and right arrow keys to read each week${onSelect ? ", Enter to open its details" : ""}.`}
         tabIndex={0}
         onPointerMove={(e) => setActive(indexFromClientX(e.clientX))}
-        onPointerLeave={() => setActive(null)}
         onClick={(e) => {
           const i = indexFromClientX(e.clientX);
           if (i !== null && onSelect) onSelect(selected === weeks[i].index ? null : weeks[i].index);
@@ -136,7 +135,7 @@ export function ForecastChart({ weeks, title, selected, onSelect }: { weeks: Cha
         {weeks.map((w, i) => (
           <circle key={`d${w.index}`} cx={x(i)} cy={y(w.base)} r={3.5} fill="var(--accent)" stroke="var(--surface)" strokeWidth={1.5} />
         ))}
-        {/* flagged weeks: warm-red marker where the cautious case bottoms out */}
+        {/* flagged weeks: warm-red marker where the low case bottoms out */}
         {weeks.map((w, i) =>
           w.status === "short" || w.status === "shortfall" ? (
             <circle key={`f${w.index}`} cx={x(i)} cy={y(w.low)} r={5} fill="var(--warn)" stroke="var(--surface)" strokeWidth={2} />
@@ -153,16 +152,20 @@ export function ForecastChart({ weeks, title, selected, onSelect }: { weeks: Cha
 
       {a && active !== null && (
         <div
-          className="pointer-events-none absolute top-2 z-10 w-52 rounded-xl border border-line bg-surface p-3 text-sm shadow-lg"
+          className="absolute top-2 z-10 w-52 rounded-xl border border-line bg-surface p-3 text-sm shadow-lg"
           // Beside the crosshair, not over it: right of the line, or left of it past the middle.
           style={{ left: tipLeftPct < 58 ? `calc(${tipLeftPct}% + 14px)` : `calc(${tipLeftPct}% - 222px)` }}
           role="status"
         >
           <div className="mb-1 text-xs font-bold text-muted">{a.label}</div>
-          <div className="flex items-baseline justify-between"><span className="text-muted">Likely low point</span><strong className="tabular">{money(a.base)}</strong></div>
-          <div className="flex items-baseline justify-between"><span className="text-muted">Cautious case</span><span className="tabular">{money(a.low)}</span></div>
-          <div className="flex items-baseline justify-between"><span className="text-muted">Good case</span><span className="tabular">{money(a.high)}</span></div>
-          {onSelect && <div className="mt-2 border-t border-line pt-1.5 text-[11px] font-bold text-accent-strong">See week details →</div>}
+          <div className="flex items-baseline justify-between"><span className="text-muted">Expected low point</span><strong className="tabular">{money(a.base)}</strong></div>
+          <div className="flex items-baseline justify-between"><span className="text-muted">Low case</span><span className="tabular">{money(a.low)}</span></div>
+          <div className="flex items-baseline justify-between"><span className="text-muted">High case</span><span className="tabular">{money(a.high)}</span></div>
+          {onSelect && (
+            <button type="button" onClick={() => onSelect(a.index)} className="mt-2 w-full border-t border-line pt-1.5 text-left text-[11px] font-bold text-accent-strong hover:underline">
+              See week details →
+            </button>
+          )}
         </div>
       )}
     </figure>

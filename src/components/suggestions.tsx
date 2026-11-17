@@ -218,11 +218,14 @@ export function HoverCard({ content, children }: { content: ReactNode; children:
   const [alignRight, setAlignRight] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // After a click (the week opens in full), stay closed until the pointer leaves.
+  const suppressed = useRef(false);
   const clear = () => {
     if (timer.current) clearTimeout(timer.current);
   };
   const show = () => {
     clear();
+    if (suppressed.current) return;
     const r = wrap.current?.getBoundingClientRect();
     if (r) setAlignRight(r.left + 340 > window.innerWidth);
     setOpen(true);
@@ -234,7 +237,8 @@ export function HoverCard({ content, children }: { content: ReactNode; children:
       ref={wrap}
       className="relative"
       onPointerEnter={(e) => { if (e.pointerType === "mouse") { clear(); timer.current = setTimeout(show, 500); } }}
-      onPointerLeave={() => { clear(); timer.current = setTimeout(() => setOpen(false), 120); }}
+      onPointerLeave={() => { clear(); suppressed.current = false; timer.current = setTimeout(() => setOpen(false), 120); }}
+      onPointerDown={() => { clear(); suppressed.current = true; setOpen(false); }}
       onFocus={show}
       onBlur={() => setOpen(false)}
     >
@@ -277,25 +281,29 @@ export function ReasonItems({ reasons }: { reasons: Reasons }) {
 }
 
 /** Hover card for a week tile: the three cases, then (if flagged) the move and why. */
-export function WeekTip({ week, r }: { week: WeekResult; r?: FlaggedRun }) {
+export function WeekTip({ week, r, onOpen }: { week: WeekResult; r?: FlaggedRun; onOpen?: () => void }) {
   const cases: [string, number, string][] = [
-    ["Cautious", week.low, "bg-[#f6f1e9]"],
-    ["Likely", week.base, "bg-accent-soft"],
-    ["Good", week.high, "bg-[#f6f1e9]"],
+    ["Low", week.low, "ring-1 ring-line"],
+    ["Expected", week.base, "ring-2 ring-accent/45"],
+    ["High", week.high, "ring-1 ring-line"],
   ];
   return (
     <div className="space-y-2.5 text-left">
       <div className="grid grid-cols-3 gap-1.5 text-center">
         {cases.map(([label, v, bg]) => (
-          <div key={label} className={`rounded-lg px-1.5 py-1.5 ${bg}`}>
+          <div key={label} className={`rounded-lg bg-[#f8f4ee] px-1.5 py-1.5 ${bg}`}>
             <div className="text-[10px] font-bold text-accent-strong">{label}</div>
-            <div className={`tabular text-sm font-extrabold ${v < 0 ? "text-warn" : ""}`}>{usd(v)}</div>
+            <div className={`tabular font-extrabold ${label === "Expected" ? "text-base" : "text-sm"} ${v < 0 ? "text-warn" : ""}`}>{usd(v)}</div>
           </div>
         ))}
       </div>
       {r?.lead.fix && <MoveSummary fix={r.lead.fix} compact />}
       {r && <ReasonItems reasons={r.lead.reasons!} />}
-      <p className="text-[11px] font-bold text-accent-strong">See week details →</p>
+      {onOpen ? (
+        <button type="button" onClick={onOpen} className="text-[11px] font-bold text-accent-strong hover:underline">See week details →</button>
+      ) : (
+        <p className="text-[11px] font-bold text-accent-strong">See week details →</p>
+      )}
     </div>
   );
 }

@@ -36,6 +36,8 @@ export interface CashEvent {
   included: Record<Case, boolean>;
   confidence?: Confidence;
   toReserve?: boolean;
+  /** Tax payments only, checking view: the part paid from the earmarked tax savings account. */
+  earmarkedCents?: number;
   essential?: boolean;
 }
 
@@ -48,7 +50,7 @@ export interface WeekResult {
   high: number;
   lowMinDate: string;
   status: Status;
-  /** Projected checking balance on the last day of the week (likely case). */
+  /** Projected checking balance on the last day of the week (expected case). */
   endBase: number;
 }
 
@@ -104,6 +106,8 @@ export interface Forecast {
   zFor: number;
   operatingToday: number;
   reserveToday: number;
+  /** Balance of the tax savings account: earmarked for taxes, so it's not runway. */
+  taxEarmarkToday: number;
   reserveAccounts: { id: string; name: string; balance: number }[];
   events: CashEvent[];
   weeks: WeekResult[];
@@ -249,7 +253,7 @@ function simulate(p: Profile, events: CashEvent[], c: Case, start: number, z: nu
     if (!e.included[c]) continue;
     const i = daysBetween(p.today, e.date[c]);
     if (i < 1 || i > days) continue;
-    delta[i] += e.amount[c];
+    delta[i] += e.amount[c] + (e.earmarkedCents ?? 0);
     if (e.toReserve) reserveDelta[i] -= e.amount[c];
   }
   const daily = p.spending.weeklyMeanCents / 7;
@@ -273,12 +277,13 @@ function simulate(p: Profile, events: CashEvent[], c: Case, start: number, z: nu
 // 3. Explain a dip: what lands before it, and what it is waiting for.
 
 function explain(events: CashEvent[], minDate: string): Reasons {
+  const impact = (e: CashEvent) => e.amount.low + (e.earmarkedCents ?? 0);
   const outflows = events
     .filter((e) => e.included.low && e.kind !== "income" && e.kind !== "transfer")
-    .filter((e) => e.date.low <= minDate && daysBetween(e.date.low, minDate) <= 20 && e.amount.low <= -40_000)
-    .sort((a, b) => a.amount.low - b.amount.low)
+    .filter((e) => e.date.low <= minDate && daysBetween(e.date.low, minDate) <= 20 && impact(e) <= -40_000)
+    .sort((a, b) => impact(a) - impact(b))
     .slice(0, 3)
-    .map((e) => ({ label: e.label, date: e.date.low, amount: e.amount.low }))
+    .map((e) => ({ label: e.earmarkedCents ? `${e.label} (beyond tax savings)` : e.label, date: e.date.low, amount: impact(e) }))
     .sort((a, b) => (a.date < b.date ? -1 : 1));
 
   const next = events
@@ -298,7 +303,7 @@ function explain(events: CashEvent[], minDate: string): Reasons {
   } else if (list) {
     sentence = `${list} ${outflows.length > 1 ? "come" : "comes"} out before your next income.`;
   } else {
-    sentence = "Day-to-day spending outpaces income here in the cautious case.";
+    sentence = "Day-to-day spending outpaces income here in the low case.";
   }
   return { outflows, waitingFor, sentence };
 }
@@ -319,12 +324,27 @@ export function forecast(p: Profile, opts: { scope?: Scope } = {}): Forecast {
   const op = p.accounts.find((a) => a.tier === "operating");
   const operatingName = op ? `${op.institution} ${op.name}` : "checking";
 
+  // Tax savings is earmarked: in the checking view, estimated tax is paid from it
+  // first, and it is never offered to cover other bills. (In the checking + savings
+  // view the whole payment leaves cash, so nothing changes there.)
+  const taxAccountId = p.tax?.reserveAccountId;
+  if (scope === "checking" && taxAccountId) {
+    let earmark = p.accounts.find((a) => a.id === taxAccountId)?.balanceCents ?? 0;
+    for (const e of events.filter((x) => x.kind === "tax").sort((a, b) => (a.date.base < b.date.base ? -1 : 1))) {
+      const fromSavings = Math.max(0, Math.min(earmark, -e.amount.base));
+      if (fromSavings > 0) e.earmarkedCents = fromSavings;
+      earmark -= fromSavings;
+    }
+  }
+  const coverAccounts = reserveAccounts.filter((a) => a.id !== taxAccountId);
+  const coverToday = coverAccounts.reduce((s, a) => s + a.balance, 0);
+
   // In the "cash" scope savings are part of the balance, so transfers into savings move
   // money between two counted accounts and are left out of the simulation.
   const startBalance = scope === "cash" ? operatingToday + reserveToday : operatingToday;
   const simEvents = scope === "cash" ? events.filter((e) => !e.toReserve) : events;
-  // Savings still outside the tracked balance, available to cover a dip.
-  const outsideReserve = scope === "cash" ? 0 : reserveToday;
+  // Savings still outside the tracked balance, available to cover a dip (not tax savings).
+  const outsideReserve = scope === "cash" ? 0 : coverToday;
   const sims = {
     low: simulate(p, simEvents, "low", startBalance, z),
     base: simulate(p, simEvents, "base", startBalance, z),
@@ -401,14 +421,14 @@ export function forecast(p: Profile, opts: { scope?: Scope } = {}): Forecast {
     // The fix has to be in place before the run's first dip below zero.
     const firstDip = run.find((w) => w.low < 0) ?? worst;
     {
-      if (status === "short" && reserveAccounts.length > 0) {
-        const amount = Math.min(ceilHundred(-worst.low + 20_000), reserveToday);
+      if (status === "short" && coverAccounts.length > 0) {
+        const amount = Math.min(ceilHundred(-worst.low + 20_000), coverToday);
         const by = addDays(firstDip.lowMinDate, -3) > p.today ? addDays(firstDip.lowMinDate, -3) : addDays(p.today, 1);
         // Draw from the largest savings account first, then the next.
         const parts: string[] = [];
         const legs: NonNullable<Fix["legs"]> = [];
         let left = amount;
-        for (const r of [...reserveAccounts].sort((x, y) => y.balance - x.balance)) {
+        for (const r of [...coverAccounts].sort((x, y) => y.balance - x.balance)) {
           if (left <= 0) break;
           const take = Math.min(left, Math.floor(r.balance / 10_000) * 10_000);
           if (take > 0) { parts.push(`${usd(take)} from ${r.name}`); legs.push({ accountId: r.id, account: r.name, amount: take, balance: r.balance }); left -= take; }
@@ -422,14 +442,14 @@ export function forecast(p: Profile, opts: { scope?: Scope } = {}): Forecast {
           to: operatingName,
           by,
           sentence: `Move ${from} to checking by ${fmtDate(by)}.`,
-          rule: "Rule of thumb: checking should cover the cautious case; savings is the buffer, not the bill-payer.",
+          rule: "Rule of thumb: checking should cover the low case; savings is the buffer, not the bill-payer.",
         };
       } else if (status === "shortfall") {
         const shortBy = ceilHundred(-(worst.low + outsideReserve));
         win.fix = {
           kind: "shortfall",
           amount: shortBy,
-          sentence: `${scope === "cash" ? "Counting checking and savings together" : "Even with all savings moved to checking"}, you'd be about ${usd(shortBy)} short around ${fmtDate(worst.lowMinDate)} in the cautious case. Push a planned expense, chase an invoice, or line up extra income before then.`,
+          sentence: `${scope === "cash" ? "Counting checking and savings together" : "Even with all savings moved to checking"}, you'd be about ${usd(shortBy)} short around ${fmtDate(worst.lowMinDate)} in the low case. Push a planned expense, chase an invoice, or line up extra income before then.`,
           rule: "Rule of thumb: fix a real shortfall weeks ahead, while you still have options.",
         };
       } else if (status === "tight") {
@@ -450,7 +470,9 @@ export function forecast(p: Profile, opts: { scope?: Scope } = {}): Forecast {
     if (sims.low.bal[i] < lowest.low) lowest = { ...lowest, low: sims.low.bal[i], lowDate: addDays(p.today, i) };
   }
 
-  const liquid = operatingToday + reserveToday;
+  // Runway counts checking and savings, but never tax savings: that money is owed.
+  const taxEarmarkToday = reserveToday - coverToday;
+  const liquid = operatingToday + coverToday;
   let tax: Forecast["tax"];
   if (p.tax && taxAmount !== undefined) {
     const setAside = p.accounts.find((a) => a.id === p.tax!.reserveAccountId)?.balanceCents ?? 0;
@@ -464,6 +486,7 @@ export function forecast(p: Profile, opts: { scope?: Scope } = {}): Forecast {
     zFor: z,
     operatingToday,
     reserveToday,
+    taxEarmarkToday,
     reserveAccounts,
     events,
     weeks,

@@ -119,4 +119,36 @@ export interface Profile {
   goals: Goal[];
   transactions: Transaction[];
   history?: { label: string; date: string }[];
+  retirement?: RetirementSetup;
+  studentLoans?: StudentLoanSetup;
+}
+
+/** Retirement saving. Self-employed people use a SEP IRA or Solo 401(k); employees an employer plan. */
+export interface RetirementSetup {
+  plan: "sep_ira" | "solo_401k" | "employer_401k" | "none";
+  accountId?: string;
+  /** Contributed so far this calendar year. */
+  ytdContributedCents: number;
+  // Self-employed
+  /** Estimated net self-employment profit for the year (sets the SEP limit). */
+  estNetProfitCents?: number;
+  /** Share of each after-tax client payment to put toward retirement, e.g. 10. */
+  windfallPct?: number;
+  // Employer plan
+  salaryCents?: number;
+  contributionPct?: number;
+  /** Employer match: matchRatePct cents per dollar, on contributions up to matchUpToPct of salary. */
+  matchRatePct?: number;
+  matchUpToPct?: number;
+}
+
+/** Student loans: what next term's borrowing costs, and when it can still be undone. */
+export interface StudentLoanSetup {
+  /** When the refund after the next one is expected (start of the following term). */
+  followingRefundDate: string;
+  federalRatePct: number; // Direct Unsubsidized, e.g. 8.07
+  privateRatePct: number;
+  federalPerTermCents: number; // federal share of each term's disbursement
+  /** Federal funds returned within 120 days of disbursement cost no interest or fees. */
+  nextDisbursementDate: string;
 }

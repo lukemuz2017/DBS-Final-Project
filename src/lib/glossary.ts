@@ -8,7 +8,7 @@ export const GLOSSARY = {
   },
   runway: {
     title: "Cash Runway",
-    body: "How many weeks your cash would last if no more money came in. It divides cash today by your weekly burn: essential bills plus typical everyday spending. The target comes from your profile; the usual advice is 3–6 months.",
+    body: "How many weeks your cash would last if no more money came in. It divides cash today by your weekly burn: essential bills plus typical everyday spending. The target comes from your profile; the usual advice is 3–6 months. Money in your tax savings account isn't counted: it's set aside for taxes.",
   },
   burn: {
     title: "Weekly burn",
@@ -16,7 +16,7 @@ export const GLOSSARY = {
   },
   nextIn: {
     title: "Next money in",
-    body: "The next payment Runway expects in the likely case. Income you've marked “not counted yet” is skipped until it's confirmed.",
+    body: "The next payment Runway expects in the expected case. Income you've marked “not counted yet” is skipped until it's confirmed.",
   },
   nextBill: {
     title: "Next big bill",
@@ -27,28 +27,60 @@ export const GLOSSARY = {
     body: "The lowest your checking account gets in the next 12 weeks if everything arrives on time at the expected amount. Savings isn't included, because bills come out of checking.",
   },
   likely: {
-    title: "Likely case",
+    title: "Expected case",
     body: "Everything arrives on its expected date at its expected amount. Income marked “not counted yet” is left out.",
   },
   cautious: {
-    title: "Cautious case",
+    title: "Low case",
     body: "A careful “if things go a bit wrong” view, not the worst case: income comes at its latest likely date and at the low end, maybe-income isn't counted, bills run high, and spending runs above average.",
   },
   good: {
-    title: "Good case",
+    title: "High case",
     body: "Things go a bit right: income comes early and at the high end, maybe-income is counted, and bills and spending run low.",
   },
   range: {
     title: "The range",
-    body: "From the cautious case to the good case. It widens the further out you look, and it's wider when your income is less predictable.",
+    body: "From the low case to the high case. It widens the further out you look, and it's wider when your income is less predictable.",
   },
   otherExpenses: {
     title: "Other expenses (est.)",
-    body: "Everything that isn't a scheduled bill or plan: groceries, coffee, rides, and other day-to-day spending. It's this week's total, estimated from your recent spending, and runs higher in the cautious case.",
+    body: "Everything that isn't a scheduled bill or plan: groceries, coffee, rides, and other day-to-day spending. It's this week's total, estimated from your recent spending, and runs higher in the low case.",
+  },
+  payYourself: {
+    title: "Pay yourself",
+    body: "Irregular income works best with a steady paycheck you give yourself. This is the most you can spend each week on everyday things (groceries, going out, rides) while checking and savings stay above a one-week cushion for the next 12 weeks, even in the low case. Bills, taxes and planned expenses are already covered.",
+  },
+  windfall: {
+    title: "Payday Plan",
+    body: "A plan for each upcoming client payment. Tax set-aside comes first, because no one withholds it for you. Then: what the next weeks need, a buffer top-up if your runway is below target, retirement (if the expected case can afford it), and whatever the low case says is truly yours to spend.",
+  },
+  retirementSelf: {
+    title: "Retirement without an employer",
+    body: "Freelancers can open their own plan. A SEP IRA lets you put in about 20% of net self-employment profit (up to $72,000 in 2026). A Solo 401(k) adds up to $24,500 on top, which helps at lower incomes. Both lower this year's taxes.",
+  },
+  soloVsSep: {
+    title: "Solo 401(k) vs SEP IRA",
+    body: "Both are for the self-employed. A Solo 401(k) lets you contribute as the employee (up to $24,500) and the employer (about 20% of profit), so it allows more at the same income, but takes a little more paperwork. A SEP IRA is simpler. Compare with a tax professional.",
+  },
+  retirementEmployer: {
+    title: "Workplace 401(k)",
+    body: "An employer match is part of your pay. Contributing at least enough to get the full match is the most common first step. Contributions come out before tax, so each $1 you add costs less than $1 of take-home pay.",
+  },
+  refundPlan: {
+    title: "Refund plan",
+    body: "Your loan refund is what's left after tuition, and it has to last until the next one. This shows how far it stretches after bills, and what that leaves to spend each week.",
+  },
+  borrowedMoney: {
+    title: "Borrowed-money check",
+    body: "Money you borrow costs interest from the day it's paid out (8.07% for 2026-27 federal grad loans, often more for private ones), while savings earn far less. If cash would sit unused at the next refund, borrowing less next time is usually cheaper than holding it.",
+  },
+  taxEarmark: {
+    title: "Set aside for taxes",
+    body: "Your tax savings account is earmarked: it pays your estimated taxes and nothing else. It isn't counted in your Cash Runway or offered to cover other bills.",
   },
   forecastHelp: {
     title: "Reading the Cash Forecast",
-    body: "Each tile is one week: T+1W is next week, T+12W is twelve weeks out. The number is the lowest your balance gets that week, in the likely case. A dot means the week needs attention; hover it for what to do, or click it for the full breakdown. In the chart, the line is the likely case and the shaded band runs from a cautious case (income late, bills high) to a good case.",
+    body: "Each tile is one week: T+1W is next week, T+12W is twelve weeks out. The number is the lowest your balance gets that week, in the expected case. A dot means the week needs attention; hover it for what to do, or click it for the full breakdown. In the chart, the line is the expected case and the shaded band runs from a low case (income late, bills high) to a high case. “Checking” tracks the account bills come out of; “Checking + savings” shows your whole cash cushion. Investments and retirement accounts are never counted.",
   },
   goalsHelp: {
     title: "Reading Goals",
@@ -68,15 +100,15 @@ export const GLOSSARY = {
   },
   window: {
     title: "Two-week window",
-    body: "The lowest checking balance during these two weeks. Big number: likely case. Small numbers: cautious case to good case. The bar shows where the likely case sits, and the thin line marks $0.",
+    body: "The lowest checking balance during these two weeks. Big number: expected case. Small numbers: low case to high case. The bar shows where the expected case sits, and the thin line marks $0.",
   },
-  ok: { title: "On track", body: "Checking stays above about a week of spending, even in the cautious case." },
-  tight: { title: "Tight", body: "Checking stays positive, but with less than about a week of spending to spare in the cautious case." },
-  short: { title: "Move money", body: "Checking could dip below $0 in the cautious case, but your savings can cover it. Move money over a few days before, and you're fine." },
-  shortfall: { title: "Short", body: "Even moving all your savings wouldn't cover the cautious case. Time to shift a planned expense, chase an invoice, or find extra income." },
+  ok: { title: "On track", body: "Checking stays above about a week of spending, even in the low case." },
+  tight: { title: "Tight", body: "Checking stays positive, but with less than about a week of spending to spare in the low case." },
+  short: { title: "Move money", body: "Checking could dip below $0 in the low case, but your savings can cover it. Move money over a few days before, and you're fine." },
+  shortfall: { title: "Short", body: "Even moving all your savings wouldn't cover the low case. Time to shift a planned expense, chase an invoice, or find extra income." },
   certain: { title: "Certain", body: "Counted in every case. Use it for paychecks and refunds that always arrive." },
-  likelyIncome: { title: "Likely", body: "Counted in the likely and good cases, and in the cautious case at its latest date and lowest amount." },
-  uncertain: { title: "Not counted yet", body: "Only shows up in the good case. A maybe never props up your forecast until you mark it confirmed." },
+  likelyIncome: { title: "Likely", body: "Counted in the expected and high cases, and in the low case at its latest date and lowest amount." },
+  uncertain: { title: "Not counted yet", body: "Only shows up in the high case. A maybe never props up your forecast until you mark it confirmed." },
   noTax: { title: "No tax withheld", body: "Nobody takes tax out of this income, so part of it is owed later. Runway counts it toward your quarterly estimated tax." },
   estimatedTax: {
     title: "Quarterly estimated tax",
@@ -88,7 +120,7 @@ export const GLOSSARY = {
   notCounted: { title: "Not counted", body: "Credit cards and loans. Card spending shows up in the forecast as your monthly card payment instead." },
   suggestedMove: {
     title: "Suggested move",
-    body: "A transfer between your own accounts that keeps checking above $0 in the cautious case. Runway never moves money itself; you make the transfer.",
+    body: "A transfer between your own accounts that keeps checking above $0 in the low case. Runway never moves money itself; you make the transfer.",
   },
   onPace: { title: "On pace", body: "Saved so far plus your monthly amount reaches the target by the date you set." },
   behindPace: { title: "Behind pace", body: "At your current monthly amount you'd miss the date. The note shows what it would take per month." },

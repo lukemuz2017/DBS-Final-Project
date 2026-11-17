@@ -88,6 +88,16 @@ export const steady: Profile = {
     { id: "o-g3", name: "Condo down payment", kind: "home_down_payment", targetCents: 4_000_000, targetDate: "2030-12-31", savedCents: 0, monthlyContributionCents: 0 },
   ],
 
+  retirement: {
+    plan: "employer_401k",
+    accountId: "o-401k",
+    ytdContributedCents: 105_000, // 3% since starting in July
+    salaryCents: 7_800_000,
+    contributionPct: 3,
+    matchRatePct: 50,
+    matchUpToPct: 6,
+  },
+
   history: [
     { label: "Gig work: delivery driving + freelance editing", date: "2023-06-01" },
     { label: "Started full-time at Lumen Street Studios", date: "2026-07-13" },

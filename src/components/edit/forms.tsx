@@ -237,7 +237,7 @@ export function IncomeForm({ stream, today, onSave, onDelete, onCancel }: Done &
       <div className="space-y-2">
         <div className="text-sm font-bold">How sure is it?</div>
         <Segmented label="Certainty" value={confidence} onChange={setConfidence} options={[{ value: "certain", label: "Certain" }, { value: "likely", label: "Likely" }, { value: "uncertain", label: "Not counted yet" }]} />
-        <p className="text-xs text-muted">“Not counted yet” shows up only in the good case, so a maybe never props up your forecast.</p>
+        <p className="text-xs text-muted">“Not counted yet” shows up only in the high case, so a maybe never props up your forecast.</p>
       </div>
 
       <div className="space-y-3">
