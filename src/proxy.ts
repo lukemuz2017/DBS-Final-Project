@@ -6,7 +6,9 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 const isSignedInApp = createRouteMatcher(["/app(.*)"]);
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isSignedInApp(req)) await auth.protect();
+  // Signed out: send people to our sign-in page (on Vercel, protect() otherwise
+  // answers 404 because the server side doesn't know where sign-in lives).
+  if (isSignedInApp(req)) await auth.protect({ unauthenticatedUrl: new URL("/sign-in", req.url).toString() });
 });
 
 export const config = {
