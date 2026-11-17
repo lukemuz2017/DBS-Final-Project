@@ -127,6 +127,23 @@ export interface Profile {
   studentLoans?: StudentLoanSetup;
   /** For the long-term retirement outlook. */
   birthYear?: number;
+  /** The user's money rules (savings style, cushion, ...). Missing fields use DEFAULT_RULES. */
+  rules?: Partial<MoneyRules>;
+}
+
+export type SavingsStyle = "safe" | "balanced" | "push";
+
+/** The user's cash-flow policy, set at signup and in Account Details → Money rules. */
+export interface MoneyRules {
+  savingsStyle: SavingsStyle;
+  predictability: "very_steady" | "mostly_steady" | "lumpy" | "feast_famine";
+  clientsPay: "on_time" | "1_2_weeks_late" | "3_plus_weeks_late";
+  /** Weeks of essentials to keep in checking. */
+  cushionWeeks: 0.5 | 1 | 2;
+  /** Pay yourself warns below this weekly amount. */
+  minWeeklySpendCents: number;
+  /** Account suggestions the user dismissed ("I have one" / "Not now"). */
+  dismissedGaps: string[];
 }
 
 /** One deposit into a retirement account, as the plan provider reports it. */

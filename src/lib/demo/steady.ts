@@ -104,6 +104,7 @@ export const steady: Profile = {
     ]),
   },
   birthYear: 1998,
+  rules: { savingsStyle: "balanced", predictability: "very_steady", clientsPay: "on_time", cushionWeeks: 1 },
 
   history: [
     { label: "Gig work: delivery driving + freelance editing", date: "2023-06-01" },

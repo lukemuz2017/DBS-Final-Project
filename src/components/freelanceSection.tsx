@@ -5,7 +5,7 @@
 
 import { useState, type ReactNode } from "react";
 import type { Forecast } from "@/lib/engine/forecast";
-import { safePay, windfallSplits, type SplitLeg, type WindfallSplit } from "@/lib/engine/plan";
+import { paydayPlan, safePay, windfallSplits, type SplitLeg, type WindfallSplit } from "@/lib/engine/plan";
 import { fmtDate, fmtDay, usd } from "@/lib/format";
 import type { Profile } from "@/lib/types";
 import { PencilIcon, SmallButton } from "./edit/fields";
@@ -62,6 +62,9 @@ function PayBody({ p }: { p: Profile }) {
       <p className={`mt-2 text-sm font-bold ${over ? "text-warn" : "text-accent-strong"}`}>
         {over ? `You usually spend ${usd(s.currentWeeklyCents)}/week: ${usd(s.currentWeeklyCents - s.weeklyCents)} over.` : `You usually spend ${usd(s.currentWeeklyCents)}/week: within it.`}
       </p>
+      {s.minWeeklyCents > 0 && s.weeklyCents < s.minWeeklyCents && (
+        <p className="mt-1 text-xs font-bold text-warn">Below your {usd(s.minWeeklyCents)}/week minimum. Chase an invoice or trim a bill to close the gap.</p>
+      )}
     </div>
   );
 }
@@ -108,9 +111,17 @@ function SplitBar({ w }: { w: WindfallSplit }) {
 }
 
 function SplitFoot({ p, w }: { p: Profile; w: WindfallSplit }) {
+  const { rules } = paydayPlan(p);
+  const paused = !rules.pushPaused
+    ? ""
+    : rules.pausedBy?.reason === "dip"
+      ? ` Push hard is paused: checking dips below $0 around ${fmtDate(rules.pausedBy.date!)} in the low case.`
+      : rules.pausedBy?.reason === "necessities"
+        ? ` Push hard is paused: it would leave less than your ${usd(rules.minWeeklySpendCents)}/week minimum for everyday spending.`
+        : " Push hard is paused: Cash Runway is under 4 weeks.";
   return (
     <p className="mt-3 text-xs text-muted">
-      <strong className="text-tight">Taxes first:</strong> {p.tax?.setAsidePct}% of every untaxed payment.{w.note ? ` ${w.note}` : ""} The forecast assumes you follow this plan.
+      <strong className="text-tight">Taxes first:</strong> {p.tax?.setAsidePct}% of every untaxed payment.{paused}{w.note ? ` ${w.note}` : ""} The forecast assumes you follow this plan.
     </p>
   );
 }

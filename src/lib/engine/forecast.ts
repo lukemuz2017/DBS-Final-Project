@@ -22,6 +22,7 @@
 
 import { addDays, ceilHundred, daysBetween, fmtDate, fmtRange, toDate, toISO, usd } from "../format";
 import type { Confidence, Profile } from "../types";
+import { rulesOf } from "./rules";
 
 export const HORIZON_WEEKS = 12;
 const HORIZON_DAYS = HORIZON_WEEKS * 7;
@@ -409,7 +410,8 @@ export function forecast(p: Profile, opts: { scope?: Scope; extra?: CashEvent[] 
     .filter((e) => e.kind === "bill" && e.essential)
     .reduce((s, e) => s - e.amount.base, 0);
   const weeklyBurn = Math.round(essentialBills / HORIZON_WEEKS + p.spending.weeklyMeanCents);
-  const cushion = Math.max(50_000, Math.round(weeklyBurn / 100) * 100);
+  // Cushion: the weeks of essentials the user wants to keep in checking (money rules), at least $500.
+  const cushion = Math.max(50_000, Math.round((weeklyBurn * rulesOf(p).cushionWeeks) / 100) * 100);
 
   const weeks: WeekResult[] = [];
   for (let w = 1; w <= HORIZON_WEEKS; w++) {

@@ -162,7 +162,6 @@ export const freelance: Profile = {
     accountId: "f-sep",
     ytdContributedCents: 300_000,
     estNetProfitCents: 6_800_000, // about $68k net profit for 2026
-    windfallPct: 10,
     retirementAge: 67,
     // 10% of each after-tax client payment, moved a day or so after it lands. $3,000 so far in 2026.
     contributions: [
@@ -185,6 +184,7 @@ export const freelance: Profile = {
     ],
   },
   birthYear: 1992,
+  rules: { savingsStyle: "balanced", predictability: "lumpy", clientsPay: "1_2_weeks_late", cushionWeeks: 1, minWeeklySpendCents: 10_000 },
 
   history: [
     { label: "Went full-time freelance", date: "2023-03-01" },

@@ -13,6 +13,7 @@ import { addDays, ceilHundred, daysBetween, fmtDate } from "../format";
 import type { Goal, Profile, RecurringBill } from "../types";
 import { coverOrder, forecast, HORIZON_WEEKS, type CashEvent, type Forecast } from "./forecast";
 import { goalPace } from "./goals";
+import { pauseToBalanced, resolveRules, type ResolvedRules } from "./rules";
 
 export const LIMITS_2026 = {
   ira: 750_000,
@@ -30,8 +31,9 @@ export function billPerMonth(b: RecurringBill) {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Pay yourself: the most everyday spending per week that keeps CHECKING above a
-//    one-week cushion in the low case, assuming the Payday Plan is followed. Like the
+// 1. Pay yourself: the most everyday spending per week that keeps CHECKING above the
+//    cushion (money rules: ½, 1 or 2 weeks) in the low case (the expected case for very
+//    steady income), assuming the Payday Plan is followed. Like the
 //    plan, it looks as far as the last client payment it splits (at least four weeks):
 //    savings is for dips and goals, not for paying yourself.
 
@@ -44,21 +46,26 @@ export interface SafePay {
   feasible: boolean;
   /** How far below the cushion the cash gets with no everyday spending (when not feasible). */
   gapCents: number;
+  /** Which case it plans on: the expected case only for very steady income. */
+  basis: "low" | "base";
+  /** The user's minimum weekly spending (money rules); 0 = not set. */
+  minWeeklyCents: number;
 }
 
 export function safePay(p: Profile): SafePay {
   const cushion = forecast(p).cushion;
   const plan = paydayPlan(p);
+  const { payBasis: basis, minWeeklySpendCents: minWeeklyCents } = resolveRules(p);
   const lowest = (weekly: number) =>
     Math.min(
       ...forecast({ ...p, spending: { ...p.spending, weeklyMeanCents: weekly } }, { extra: plan.events })
         .weeks.filter((w) => w.start <= plan.lookahead)
-        .map((w) => w.low),
+        .map((w) => (basis === "base" ? w.base : w.low)),
     );
   const ok = (weekly: number) => lowest(weekly) >= cushion;
 
   if (!ok(0)) {
-    return { weeklyCents: 0, paycheckCents: 0, currentWeeklyCents: p.spending.weeklyMeanCents, cushionCents: cushion, feasible: false, gapCents: ceilHundred(cushion - lowest(0)) };
+    return { weeklyCents: 0, paycheckCents: 0, currentWeeklyCents: p.spending.weeklyMeanCents, cushionCents: cushion, feasible: false, gapCents: ceilHundred(cushion - lowest(0)), basis, minWeeklyCents };
   }
   // Binary search (to within $1) between $0 and $5,000 a week, then round down to $5.
   let lo = 0;
@@ -69,7 +76,7 @@ export function safePay(p: Profile): SafePay {
     else hi = mid;
   }
   const weekly = roundDown(lo);
-  return { weeklyCents: weekly, paycheckCents: weekly * 2, currentWeeklyCents: p.spending.weeklyMeanCents, cushionCents: cushion, feasible: true, gapCents: 0 };
+  return { weeklyCents: weekly, paycheckCents: weekly * 2, currentWeeklyCents: p.spending.weeklyMeanCents, cushionCents: cushion, feasible: true, gapCents: 0, basis, minWeeklyCents };
 }
 
 // ---------------------------------------------------------------------------
@@ -103,6 +110,8 @@ export interface WindfallSplit {
 
 export interface PaydayPlan {
   splits: WindfallSplit[];
+  /** The money rules as applied (Push hard may be paused). */
+  rules: ResolvedRules;
   /** How far the plan looks in the low case: the last payment it splits, at least four weeks out. */
   lookahead: string;
   /** The plan's moves after tax (buffer, retirement, goals), as forecast events. */
@@ -143,8 +152,25 @@ function linkedSaved(p: Profile, g: Goal): number {
 }
 
 function buildPaydayPlan(p: Profile): PaydayPlan {
-  if (!p.tax) return { splits: [], events: [], lookahead: addDays(p.today, HORIZON_WEEKS * 7) };
   const base = forecast(p); // checking, with tax set-asides
+  const rules = resolveRules(p, { runwayWeeks: base.runway.weeks, lowestLow: base.lowest.low, lowestLowDate: base.lowest.lowDate });
+  if (!p.tax) return { splits: [], events: [], lookahead: addDays(p.today, HORIZON_WEEKS * 7), rules };
+  const plan = planWith(p, base, rules);
+  // Push hard never squeezes everyday necessities: if it would leave less than the
+  // user's minimum weekly spending (in the case Pay yourself plans on), fall back to Balanced.
+  if (rules.applied === "push" && rules.minWeeklySpendCents > 0 && !coversMinimum(p, plan, rules)) {
+    return planWith(p, base, pauseToBalanced(rules, { reason: "necessities" }));
+  }
+  return plan;
+}
+
+function coversMinimum(p: Profile, plan: PaydayPlan, rules: ResolvedRules): boolean {
+  const f = forecast({ ...p, spending: { ...p.spending, weeklyMeanCents: rules.minWeeklySpendCents } }, { extra: plan.events });
+  const weeks = f.weeks.filter((w) => w.start <= plan.lookahead);
+  return Math.min(...weeks.map((w) => (rules.payBasis === "base" ? w.base : w.low))) >= f.cushion;
+}
+
+function planWith(p: Profile, base: Forecast, rules: ResolvedRules): PaydayPlan {
   const untaxed = new Set(p.incomeStreams.filter((s) => !s.taxWithheld).map((s) => s.id));
   const cover = coverOrder(p);
   const bufferAccount = cover.find((a) => a.purpose === "emergency") ?? cover.find((a) => a.purpose !== "goals");
@@ -214,14 +240,15 @@ function buildPaydayPlan(p: Profile): PaydayPlan {
     let left = amount - tax;
     const free = left;
 
-    const buffer = bufferAccount ? floor10(Math.min(round10(free * 0.25), bufferGap, left, r.low)) : 0;
+    const buffer = bufferAccount ? floor10(Math.min(round10((free * rules.bufferPct) / 100), bufferGap, left, r.low)) : 0;
     bufferGap -= buffer;
     left -= buffer;
-    const retirement = ret ? floor10(Math.min(round10((free * (ret.windfallPct ?? 10)) / 100), retirementRoom, r.base - buffer, left)) : 0;
+    const retirement = ret ? floor10(Math.min(round10((free * rules.retirementPct) / 100), retirementRoom, r.base - buffer, left)) : 0;
     retirementRoom -= retirement;
     left -= retirement;
     const month = e.date.base.slice(0, 7);
-    const monthLeft = Math.max(0, goalMonthly - (goalsByMonth.get(month) ?? 0));
+    // Push hard saves ahead of the goal's pace.
+    const monthLeft = Math.max(0, goalMonthly * rules.goalPace - (goalsByMonth.get(month) ?? 0));
     const toGoals = goals.length ? floor10(Math.min(round10(monthLeft), goalRoom, r.low - buffer - retirement, left)) : 0;
     goalsByMonth.set(month, (goalsByMonth.get(month) ?? 0) + toGoals);
     goalRoom -= toGoals;
@@ -267,7 +294,7 @@ function buildPaydayPlan(p: Profile): PaydayPlan {
     return { event: s.e, amountCents: s.amount, legs, note };
   });
 
-  return { splits, events: moves, lookahead: lastLow > addDays(p.today, 28) ? lastLow : addDays(p.today, 28) };
+  return { splits, events: moves, lookahead: lastLow > addDays(p.today, 28) ? lastLow : addDays(p.today, 28), rules };
 }
 
 // ---------------------------------------------------------------------------
@@ -509,7 +536,7 @@ export function retirementOutlook(p: Profile): RetirementOutlook | null {
   if (selfEmployed) {
     // The Payday Plan's share of each after-tax payment, over a year.
     const afterTax = (income * (100 - (p.tax?.setAsidePct ?? 25))) / 100;
-    yearly = Math.round((afterTax * (r.windfallPct ?? 10)) / 100);
+    yearly = Math.round((afterTax * resolveRules(p).retirementPct) / 100);
   } else {
     const c = r.contributionPct ?? 0;
     const match = (Math.min(c, r.matchUpToPct ?? 0) * (r.matchRatePct ?? 0)) / 100;
@@ -540,7 +567,7 @@ export function retirementOutlook(p: Profile): RetirementOutlook | null {
     const setAside = p.tax?.setAsidePct ?? 25;
     keepPace = {
       kind: "self_employed",
-      currentSharePct: r.windfallPct ?? 10,
+      currentSharePct: resolveRules(p).retirementPct,
       sharePct: Math.ceil((R.savePct * 100) / (100 - setAside)),
       catchUpCents: Math.max(0, Math.min(plan.roomCents, Math.round((income * R.savePct) / 100) - r.ytdContributedCents)),
       deadline: plan.deadline!,

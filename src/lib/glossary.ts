@@ -54,6 +54,10 @@ export const GLOSSARY = {
     title: "Payday Plan",
     body: "A plan for each upcoming client payment. Tax set-aside comes first, because no one withholds it for you. Then: what the next weeks need, a buffer top-up if your runway is below target, retirement (if the expected case can afford it), and whatever the low case says is truly yours to spend.",
   },
+  moneyRules: {
+    title: "Money rules",
+    body: "Your cash-flow policy: how hard the Payday Plan saves, how much cushion stays in checking, and how predictable your income is. Runway only moves money checking can spare, and Push hard pauses itself when cash gets tight. Planning settings, not financial advice.",
+  },
   paydayAssumed: {
     title: "Assumes the Payday Plan",
     body: "These numbers assume you follow the Payday Plan: tax set aside from each client payment the day it lands, plus the suggested buffer, retirement and goal moves. Runway never moves money; if you skip a step, checking will run higher than shown and your savings lower.",

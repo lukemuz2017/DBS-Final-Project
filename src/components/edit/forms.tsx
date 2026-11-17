@@ -156,11 +156,12 @@ function detectRepeat(s?: IncomeStream) {
   return { cadence: s.cadence as RepeatCadence, amount: centsToInput(amt), next: first.expectedDate, late: String(first.latestDate ? daysBetween(first.expectedDate, first.latestDate) : 0) };
 }
 
-export function IncomeForm({ stream, today, onSave, onDelete, onCancel }: Done & { stream?: IncomeStream; today: string; onSave: (s: IncomeStream) => void; onDelete?: () => void }) {
+export function IncomeForm({ stream, today, defaults, onSave, onDelete, onCancel }: Done & { stream?: IncomeStream; today: string; defaults?: { confidence: Confidence; lateDays: number }; onSave: (s: IncomeStream) => void; onDelete?: () => void }) {
   const rep = detectRepeat(stream);
   const [name, setName] = useState(stream?.name ?? "");
   const [kind, setKind] = useState<IncomeStream["kind"]>(stream?.kind ?? "freelance_client");
-  const [confidence, setConfidence] = useState<Confidence>(stream?.confidence ?? "likely");
+  // New income starts from the user's money rules: how predictable it is and how late clients pay.
+  const [confidence, setConfidence] = useState<Confidence>(stream?.confidence ?? defaults?.confidence ?? "likely");
   const [taxWithheld, setTaxWithheld] = useState(stream?.taxWithheld ?? false);
   const [spread, setSpread] = useState(centsToInput(stream?.amountSpreadCents ?? 0));
   const [note, setNote] = useState(stream?.payDelayNote ?? "");
@@ -168,11 +169,11 @@ export function IncomeForm({ stream, today, onSave, onDelete, onCancel }: Done &
   const [cadence, setCadence] = useState<RepeatCadence>(rep?.cadence ?? "biweekly");
   const [amount, setAmount] = useState(rep?.amount ?? "");
   const [next, setNext] = useState(rep?.next ?? addDays(today, 7));
-  const [late, setLate] = useState(rep?.late ?? "0");
+  const [late, setLate] = useState(rep?.late ?? String(defaults?.lateDays ?? 0));
   const [rows, setRows] = useState<Row[]>(
     stream && !rep
       ? stream.payments.map((x, i) => ({ key: `r${i}`, label: x.label ?? "", date: x.expectedDate, amount: centsToInput(x.amountCents), latest: x.latestDate ?? "", confidence: x.confidence }))
-      : [{ key: "r0", label: "", date: addDays(today, 14), amount: "", latest: "" }],
+      : [{ key: "r0", label: "", date: addDays(today, 14), amount: "", latest: defaults?.lateDays ? addDays(today, 14 + defaults.lateDays) : "" }],
   );
   const [error, setError] = useState("");
   const [confirming, setConfirming] = useState(false);

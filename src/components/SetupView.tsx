@@ -12,10 +12,14 @@ import { Card } from "@/components/ui";
 import { useDemoProfile } from "@/lib/demo/useDemoProfile";
 import { daysBetween, usd } from "@/lib/format";
 import type { Profile } from "@/lib/types";
+import { CLIENTS_PAY, CUSHION, PREDICTABILITY, styleExample } from "@/components/edit/RulesForm";
+import { dismissGap, GapsList } from "@/components/gaps";
+import { InfoTip } from "@/components/InfoTip";
+import { rulesOf, STYLES } from "@/lib/engine/rules";
 
 const TYPE_LABEL = { freelance: "Freelance", student: "Student", steady: "Steady paycheck" } as const;
 
-type Section = "profile" | "accounts" | "income" | "bills" | "plans" | "upcoming" | "activity" | "journey";
+type Section = "profile" | "rules" | "accounts" | "income" | "bills" | "plans" | "upcoming" | "activity" | "journey";
 
 // Account details: the facts the forecast is built from. A fixed menu on the
 // left picks which section shows on the right.
@@ -29,6 +33,7 @@ export function SetupView({ base, profiles }: { base: Profile; profiles: Profile
   const stale = p.accounts.filter((a) => daysBetween(a.balanceAsOf.slice(0, 10), p.today) >= 3).length;
   const menu: { id: Section; label: string; icon: ReactNode; alert?: boolean }[] = [
     { id: "profile", label: "Profile & settings", icon: <IconUser /> },
+    { id: "rules", label: "Money rules", icon: <IconSliders /> },
     { id: "accounts", label: "Bank accounts", icon: <IconBank />, alert: stale > 0 },
     { id: "income", label: "Income sources", icon: <IconIncome /> },
     { id: "bills", label: "Recurring bills", icon: <IconRepeat /> },
@@ -42,7 +47,10 @@ export function SetupView({ base, profiles }: { base: Profile; profiles: Profile
 
   // Clicking an upcoming item opens whatever produced it.
   const editItem = (e: CashEvent) => {
-    if (e.kind === "income") edit({ kind: "income", id: e.sourceId });
+    // Payday Plan rows: tax set-asides open tax settings, the plan's moves open money rules.
+    if (e.sourceId === "tax") edit({ kind: "profile" });
+    else if (e.sourceId === "payday") edit({ kind: "rules" });
+    else if (e.kind === "income") edit({ kind: "income", id: e.sourceId });
     else if (e.kind === "bill" || e.kind === "transfer") edit({ kind: "bill", id: e.sourceId });
     else if (e.sourceId === "tax") edit({ kind: "profile" });
     else edit({ kind: "event", id: e.sourceId });
@@ -91,8 +99,35 @@ export function SetupView({ base, profiles }: { base: Profile; profiles: Profile
         )}
       </Card>
     );
+  } else if (section === "rules") {
+    const r = rulesOf(p);
+    const rows: [string, string][] = [
+      ["Savings style", STYLES[r.savingsStyle].label],
+      ["Income", PREDICTABILITY.find((x) => x.value === r.predictability)!.label],
+      ["Clients usually pay", CLIENTS_PAY.find((x) => x.value === r.clientsPay)!.label],
+      ["Cushion in checking", CUSHION.find((x) => x.value === String(r.cushionWeeks))!.label],
+      ["Minimum weekly spending", r.minWeeklySpendCents ? usd(r.minWeeklySpendCents) : "Not set"],
+    ];
+    content = (
+      <Card title={<InfoTip term="moneyRules">Money rules</InfoTip>} action={<SmallButton onClick={() => edit({ kind: "rules" })}><PencilIcon /> Edit</SmallButton>}>
+        <dl className="divide-y divide-line text-sm">
+          {rows.map(([k, v]) => (
+            <div key={k} className="flex justify-between gap-3 py-2.5">
+              <dt className="text-muted">{k}</dt>
+              <dd className="text-right font-bold">{v}</dd>
+            </div>
+          ))}
+        </dl>
+        {p.tax && <p className="mt-3 text-xs text-muted">Per $1,000 client payment: {styleExample(r.savingsStyle, p.tax.setAsidePct)}, when checking can spare it.</p>}
+      </Card>
+    );
   } else if (section === "accounts") {
-    content = <AccountsCard p={p} onEdit={(id) => edit({ kind: "account", id })} onConnect={() => edit({ kind: "connect" })} />;
+    content = (
+      <div className="space-y-4">
+        <GapsList p={p} onDismiss={(id) => update((q) => dismissGap(q, id))} />
+        <AccountsCard p={p} onEdit={(id) => edit({ kind: "account", id })} onConnect={() => edit({ kind: "connect" })} />
+      </div>
+    );
   } else if (section === "income") {
     content = <IncomeCard p={p} limit={false} onEdit={(id) => edit({ kind: "income", id })} />;
   } else if (section === "bills") {
@@ -178,4 +213,5 @@ function IconRepeat() { return <Svg><path d="M3 8a5 5 0 0 1 9-3l1.5 1.5M15 10a5 
 function IconCalendar() { return <Svg><rect x="2.5" y="3.5" width="13" height="12" rx="2" {...S} /><path d="M2.5 7.5h13M6 2v3M12 2v3" {...S} /></Svg>; }
 function IconClock() { return <Svg><circle cx="9" cy="9" r="6.5" {...S} /><path d="M9 5.5V9l2.5 1.5" {...S} /></Svg>; }
 function IconList() { return <Svg><path d="M6.5 5h8M6.5 9h8M6.5 13h8M3.5 5h.01M3.5 9h.01M3.5 13h.01" {...S} /></Svg>; }
+function IconSliders() { return <Svg><path d="M3 5h7M13 5h2M3 13h2M8 13h7M10 3v4M5 11v4" {...S} /></Svg>; }
 function IconFlag() { return <Svg><path d="M4 16V3M4 3.5h8.5l-1.5 3 1.5 3H4" {...S} /></Svg>; }

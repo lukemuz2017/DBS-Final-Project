@@ -4,7 +4,9 @@ import { useState, type ReactNode } from "react";
 import type { Profile } from "@/lib/types";
 import { ConnectBank } from "./ConnectBank";
 import { Drawer } from "./Drawer";
+import { incomeDefaults } from "@/lib/engine/rules";
 import { AccountForm, BillForm, EventForm, GoalForm, IncomeForm, ProfileForm } from "./forms";
+import { RulesForm } from "./RulesForm";
 
 // One place that knows how to open and save every editor, shared by the
 // dashboard and the setup page.
@@ -16,7 +18,8 @@ export type Editing =
   | { kind: "event"; id?: string }
   | { kind: "goal"; id?: string }
   | { kind: "account"; id: string }
-  | { kind: "connect" };
+  | { kind: "connect" }
+  | { kind: "rules" };
 
 function upsert<T extends { id: string }>(list: T[], item: T): T[] {
   return list.some((x) => x.id === item.id) ? list.map((x) => (x.id === item.id ? item : x)) : [...list, item];
@@ -33,6 +36,8 @@ export function useEditor(p: Profile, update: (fn: (p: Profile) => Profile) => v
   let drawer: { title: string; subtitle?: string; body: ReactNode } | null = null;
   if (editing?.kind === "profile") {
     drawer = { title: "Profile & settings", body: <ProfileForm p={p} onCancel={close} onSave={(np) => save(() => np)} /> };
+  } else if (editing?.kind === "rules") {
+    drawer = { title: "Money rules", body: <RulesForm p={p} onCancel={close} onSave={(rules) => save((q) => ({ ...q, rules }))} /> };
   } else if (editing?.kind === "income") {
     const s = p.incomeStreams.find((x) => x.id === editing.id);
     drawer = {
@@ -43,6 +48,7 @@ export function useEditor(p: Profile, update: (fn: (p: Profile) => Profile) => v
           key={editing.id ?? "new"}
           stream={s}
           today={p.today}
+          defaults={incomeDefaults(p)}
           onCancel={close}
           onSave={(ns) => save((q) => ({ ...q, incomeStreams: upsert(q.incomeStreams, ns) }))}
           onDelete={s ? () => save((q) => ({ ...q, incomeStreams: q.incomeStreams.filter((x) => x.id !== s.id) })) : undefined}
