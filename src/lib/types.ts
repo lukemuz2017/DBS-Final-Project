@@ -102,7 +102,8 @@ export interface TaxSetup {
 }
 
 export interface Profile {
-  slug: ProfileType;
+  /** Demo persona slug, or "me" for a signed-in user. */
+  slug: string;
   name: string;
   initials: string;
   role: string;

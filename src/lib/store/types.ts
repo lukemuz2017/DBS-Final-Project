@@ -13,4 +13,6 @@ export interface ProfileStore {
   reset?: () => void;
   edited: boolean;
   mode: StoreMode;
+  /** Signed-in users only: delete everything saved for this account. */
+  deleteAll?: () => Promise<void>;
 }

@@ -13,6 +13,7 @@ import type { ProfileStore } from "@/lib/store/types";
 import { daysBetween, usd } from "@/lib/format";
 import { CLIENTS_PAY, CUSHION, PREDICTABILITY, styleExample } from "@/components/edit/RulesForm";
 import { dismissGap, GapsList } from "@/components/gaps";
+import { DeleteData } from "@/components/DeleteData";
 import { InfoTip } from "@/components/InfoTip";
 import { rulesOf, STYLES } from "@/lib/engine/rules";
 
@@ -94,6 +95,7 @@ export function SetupView({ store, chrome }: { store: ProfileStore; chrome: Chro
         {p.tax && (
           <p className="mt-3 text-xs text-muted">Untaxed income received this period: <strong className="text-ink">{usd(p.tax.receivedThisPeriodCents)}</strong>. Edit it in settings if it&apos;s out of date.</p>
         )}
+        {store.deleteAll && <DeleteData onDelete={store.deleteAll} />}
       </Card>
     );
   } else if (section === "rules") {

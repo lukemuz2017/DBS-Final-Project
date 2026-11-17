@@ -1,3 +1,5 @@
+/* Clerk's styles get their own layer, before Tailwind's utilities, so our classes win. */
+@layer theme, base, clerk, components, utilities;
 @import "tailwindcss";
 
 /* Runway palette — the baseline from the proposal page:
