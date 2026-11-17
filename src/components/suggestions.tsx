@@ -138,7 +138,17 @@ function MoveCard({ r }: { r: FlaggedRun }) {
 export function SuggestionsButton({ f, p }: { f: Forecast; p: { name: string } }) {
   const runs = flaggedRuns(f);
   const [open, setOpen] = useState(false);
+  // Open toward whichever side has room, so the card never runs off the screen.
+  const [alignRight, setAlignRight] = useState(false);
   const wrap = useRef<HTMLDivElement>(null);
+  const toggle = () => {
+    if (!open && wrap.current) {
+      const r = wrap.current.getBoundingClientRect();
+      const width = Math.min(460, window.innerWidth - 32);
+      setAlignRight(r.left + width > window.innerWidth - 16);
+    }
+    setOpen(!open);
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -164,7 +174,7 @@ export function SuggestionsButton({ f, p }: { f: Forecast; p: { name: string } }
     <div ref={wrap} className="relative">
       <button
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={toggle}
         aria-expanded={open}
         aria-haspopup="dialog"
         className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold ring-1 transition-colors ${urgent ? "bg-sun-soft text-tight ring-sun hover:bg-sun/40" : "bg-accent-soft text-accent-strong ring-accent/30"}`}
@@ -173,7 +183,7 @@ export function SuggestionsButton({ f, p }: { f: Forecast; p: { name: string } }
         {runs.length} suggestion{runs.length === 1 ? "" : "s"}
       </button>
       {open && (
-        <div role="dialog" aria-label="Suggestions" className="absolute left-0 top-full z-30 mt-2 max-h-[75vh] w-[min(460px,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-line bg-surface shadow-2xl">
+        <div role="dialog" aria-label="Suggestions" className={`absolute ${alignRight ? "right-0" : "left-0"} top-full z-30 mt-2 max-h-[75vh] w-[min(460px,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-line bg-surface shadow-2xl`}>
           <div className="border-b border-line px-4 py-3">
             <div className="font-display text-base font-bold">Suggestions for {first}</div>
             <div className="text-xs text-muted">{f.scope === "cash" ? "Based on checking + savings together." : "Based on your checking balance. Runway never moves money; you make the transfer."}</div>

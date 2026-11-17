@@ -5,7 +5,7 @@
 
 import { useState, type ReactNode } from "react";
 import type { Forecast } from "@/lib/engine/forecast";
-import { paydayPlan, safePay, windfallSplits, type SplitLeg, type WindfallSplit } from "@/lib/engine/plan";
+import { safePay, windfallSplits, type SplitLeg, type WindfallSplit } from "@/lib/engine/plan";
 import { fmtDate, fmtDay, usd } from "@/lib/format";
 import type { Profile } from "@/lib/types";
 import { PencilIcon, SmallButton } from "./edit/fields";
@@ -110,20 +110,8 @@ function SplitBar({ w }: { w: WindfallSplit }) {
   );
 }
 
-function SplitFoot({ p, w }: { p: Profile; w: WindfallSplit }) {
-  const { rules } = paydayPlan(p);
-  const paused = !rules.pushPaused
-    ? ""
-    : rules.pausedBy?.reason === "dip"
-      ? ` Push hard is paused: checking dips below $0 around ${fmtDate(rules.pausedBy.date!)} in the low case.`
-      : rules.pausedBy?.reason === "necessities"
-        ? ` Push hard is paused: it would leave less than your ${usd(rules.minWeeklySpendCents)}/week minimum for everyday spending.`
-        : " Push hard is paused: Cash Runway is under 4 weeks.";
-  return (
-    <p className="mt-3 text-xs text-muted">
-      <strong className="text-tight">Taxes first:</strong> {p.tax?.setAsidePct}% of every untaxed payment.{paused}{w.note ? ` ${w.note}` : ""} The forecast assumes you follow this plan.
-    </p>
-  );
+function SplitFoot() {
+  return <p className="mt-3 text-xs text-muted">The forecast assumes you follow this plan.</p>;
 }
 
 export function FreelanceSection({ p, f, onEditTax, taxFallback }: { p: Profile; f: Forecast; onEditTax: () => void; taxFallback?: ReactNode }) {
@@ -135,7 +123,7 @@ export function FreelanceSection({ p, f, onEditTax, taxFallback }: { p: Profile;
       {w && (
         <Card title={<InfoTip term="windfall">Payday Plan</InfoTip>} action={<PaymentTabs splits={splits} i={i} setI={setI} />}>
           <SplitBar w={w} />
-          <SplitFoot p={p} w={w} />
+          <SplitFoot />
         </Card>
       )}
       <div className="grid items-stretch gap-5 md:grid-cols-2">
