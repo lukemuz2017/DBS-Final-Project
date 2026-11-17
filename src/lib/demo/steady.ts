@@ -66,8 +66,8 @@ export const steady: Profile = {
     { id: "o-socal", name: "SoCalGas", category: "utilities", cadence: "monthly", dayOfMonth: 6, amountCents: -3_500, amountSpreadCents: 1_000, essential: true },
     { id: "o-gym", name: "Crunch Fitness", category: "subscriptions", cadence: "monthly", dayOfMonth: 7, amountCents: -3_000, amountSpreadCents: 0, essential: false },
     { id: "o-car", name: "Honda Financial (car loan)", category: "debt", cadence: "monthly", dayOfMonth: 12, amountCents: -38_500, amountSpreadCents: 0, essential: true },
-    { id: "o-spectrum", name: "Spectrum internet", category: "utilities", cadence: "monthly", dayOfMonth: 12, amountCents: -6_500, amountSpreadCents: 0, essential: true },
-    { id: "o-tmobile", name: "T-Mobile", category: "utilities", cadence: "monthly", dayOfMonth: 17, amountCents: -5_500, amountSpreadCents: 0, essential: true },
+    { id: "o-spectrum", name: "Spectrum internet", category: "phone", cadence: "monthly", dayOfMonth: 12, amountCents: -6_500, amountSpreadCents: 0, essential: true },
+    { id: "o-tmobile", name: "T-Mobile", category: "phone", cadence: "monthly", dayOfMonth: 17, amountCents: -5_500, amountSpreadCents: 0, essential: true },
     { id: "o-nelnet", name: "Nelnet student loan", category: "debt", cadence: "monthly", dayOfMonth: 20, amountCents: -29_000, amountSpreadCents: 0, essential: true },
     { id: "o-ladwp", name: "LADWP (water + power)", category: "utilities", cadence: "bimonthly", firstDate: "2026-11-24", dayOfMonth: 24, amountCents: -11_000, amountSpreadCents: 2_500, essential: true },
     // Carries a balance from the gig years: new card purchases are in everyday spending;
@@ -107,6 +107,7 @@ export const steady: Profile = {
     ]),
   },
   birthYear: 1998,
+  payTaxes: "withheld",
   rules: { savingsStyle: "balanced", predictability: "very_steady", clientsPay: "on_time", cushionWeeks: 1 },
 
   history: [

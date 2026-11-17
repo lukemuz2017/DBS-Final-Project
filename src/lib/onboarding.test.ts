@@ -10,6 +10,7 @@ const freelance: OnboardingDraft = {
   state: "IL",
   birthYear: 1995,
   profileType: "freelance",
+  payTaxes: "self",
   predictability: "lumpy",
   clientsPay: "1_2_weeks_late",
   accounts: [
@@ -26,6 +27,7 @@ const freelance: OnboardingDraft = {
     { id: "b1", name: "Rent", amountCents: 160_000, dayOfMonth: 1, category: "housing" },
     { id: "b2", name: "Netflix", amountCents: 1_500, dayOfMonth: 9, category: "subscriptions" },
   ],
+  loans: [],
   weeklySpendCents: 15_000,
   savingsStyle: "balanced",
   cushionWeeks: 1,
@@ -58,7 +60,7 @@ describe("first-time setup", () => {
 
   it("builds a steady earner's paychecks and skips tax tracking", () => {
     const p = buildProfile(
-      { ...freelance, profileType: "steady", predictability: "very_steady", payments: [], paycheck: { amountCents: 210_000, cadence: "biweekly", next: "2026-11-20" } },
+      { ...freelance, profileType: "steady", payTaxes: "withheld", predictability: "very_steady", payments: [], paycheck: { amountCents: 210_000, cadence: "biweekly", next: "2026-11-20" } },
       "2026-11-17",
     );
     expect(p.tax).toBeUndefined();
@@ -83,6 +85,39 @@ describe("first-time setup", () => {
   it("never creates a card-payment bill (card purchases are everyday spending)", () => {
     const p = buildProfile({ ...freelance, bills: [...freelance.bills, { id: "b3", name: "Amex", amountCents: 70_000, dayOfMonth: 20, category: "card_payment" }] }, "2026-11-17");
     expect(p.recurringBills.map((b) => b.id)).toEqual(["b1", "b2"]);
+  });
+
+  it("tracks estimated tax whenever some pay is untaxed, whatever the job type", () => {
+    // A freelancer whose agency withholds tax: no tax tracking, no tax-savings suggestion.
+    const withheld = buildProfile({ ...freelance, payTaxes: "withheld", accounts: [freelance.accounts[0]] }, "2026-11-17");
+    expect(withheld.tax).toBeUndefined();
+    expect(withheld.incomeStreams[0].taxWithheld).toBe(true);
+    expect(accountGaps(withheld).map((g) => g.id)).not.toContain("tax-savings");
+    // A salaried person with some untaxed side income: tax tracking on, tax savings suggested.
+    const mixed = buildProfile({ ...freelance, profileType: "steady", payTaxes: "mixed", payments: [], accounts: [freelance.accounts[0]], paycheck: { amountCents: 200_000, cadence: "biweekly", next: "2026-11-20" } }, "2026-11-17");
+    expect(mixed.tax).toMatchObject({ setAsidePct: 30, dueDate: "2027-01-15" });
+    expect(mixed.incomeStreams[0].taxWithheld).toBe(true);
+    expect(accountGaps(mixed)[0].id).toBe("tax-savings");
+    expect(mixed.payTaxes).toBe("mixed");
+  });
+
+  it("turns each loan into a loan account and a monthly payment", () => {
+    const p = buildProfile(
+      {
+        ...freelance,
+        loans: [
+          { id: "l1", kind: "student", lender: "Nelnet", balanceCents: 2_260_000, paymentCents: 29_000, dueDay: 20 },
+          { id: "l2", kind: "mortgage", lender: "", balanceCents: 0, paymentCents: 180_000, dueDay: 1 },
+          { id: "l3", kind: "car", lender: "Honda", balanceCents: 0, paymentCents: 0, dueDay: 1 }, // left blank: skipped
+        ],
+      },
+      "2026-11-17",
+    );
+    expect(p.accounts.find((a) => a.id === "l1")).toMatchObject({ type: "loan", tier: "excluded", institution: "Nelnet", name: "Student loan", balanceCents: -2_260_000 });
+    expect(p.recurringBills.filter((b) => b.id.startsWith("loanpay")).map((b) => [b.name, b.category, b.amountCents, b.dayOfMonth])).toEqual([
+      ["Nelnet student loan", "debt", -29_000, 20],
+      ["Mortgage", "housing", -180_000, 1],
+    ]);
   });
 
   it("widens the range for feast-or-famine income", () => {

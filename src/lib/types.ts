@@ -55,7 +55,8 @@ export interface IncomeStream {
 export interface RecurringBill {
   id: string;
   name: string;
-  category: "housing" | "utilities" | "insurance" | "debt" | "subscriptions" | "transport" | "card_payment" | "transfer" | "health" | "business";
+  /** utilities = heat, electric, water; phone = phone and internet. card_payment is legacy (cards are accounts now). */
+  category: "housing" | "utilities" | "phone" | "insurance" | "debt" | "subscriptions" | "transport" | "card_payment" | "transfer" | "health" | "business";
   cadence: "weekly" | "biweekly" | "monthly" | "bimonthly";
   amountCents: number; // negative
   amountSpreadCents: number;
@@ -138,6 +139,12 @@ export interface Profile {
   studentLoans?: StudentLoanSetup;
   /** For the long-term retirement outlook. */
   birthYear?: number;
+  /**
+   * Are taxes taken out of your pay? "withheld" (W-2 paychecks), "self" (you pay your own,
+   * e.g. 1099 work), or "mixed". Drives tax tracking, the tax-savings suggestion and the
+   * default for new income. Missing: freelancers are "self", everyone else "withheld".
+   */
+  payTaxes?: "withheld" | "self" | "mixed";
   /** The user's money rules (savings style, cushion, ...). Missing fields use DEFAULT_RULES. */
   rules?: Partial<MoneyRules>;
 }

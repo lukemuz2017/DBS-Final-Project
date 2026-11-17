@@ -126,12 +126,12 @@ export const freelance: Profile = {
     { id: "f-omny", name: "OMNY transit", category: "transport", cadence: "monthly", dayOfMonth: 1, amountCents: -13_200, amountSpreadCents: 0, essential: true },
     { id: "f-gearins", name: "Gear insurance (Hill & Usher)", category: "business", cadence: "monthly", dayOfMonth: 3, amountCents: -4_500, amountSpreadCents: 0, essential: true },
     { id: "f-studio", name: "Studio share, Gowanus", category: "business", cadence: "monthly", dayOfMonth: 5, amountCents: -40_000, amountSpreadCents: 0, essential: true },
-    { id: "f-spectrum", name: "Spectrum internet", category: "utilities", cadence: "monthly", dayOfMonth: 8, amountCents: -7_000, amountSpreadCents: 0, essential: true },
+    { id: "f-spectrum", name: "Spectrum internet", category: "phone", cadence: "monthly", dayOfMonth: 8, amountCents: -7_000, amountSpreadCents: 0, essential: true },
     { id: "f-adobe", name: "Adobe Creative Cloud", category: "business", cadence: "monthly", dayOfMonth: 10, amountCents: -7_000, amountSpreadCents: 0, essential: true },
     { id: "f-bh", name: "B&H gear financing", category: "debt", cadence: "monthly", dayOfMonth: 12, amountCents: -21_000, amountSpreadCents: 0, essential: true },
     { id: "f-coned", name: "Con Edison", category: "utilities", cadence: "monthly", dayOfMonth: 16, amountCents: -9_500, amountSpreadCents: 2_000, essential: true },
     { id: "f-pixieset", name: "Pixieset + website", category: "business", cadence: "monthly", dayOfMonth: 18, amountCents: -2_600, amountSpreadCents: 0, essential: false },
-    { id: "f-visible", name: "Visible phone", category: "utilities", cadence: "monthly", dayOfMonth: 20, amountCents: -4_500, amountSpreadCents: 0, essential: true },
+    { id: "f-visible", name: "Visible phone", category: "phone", cadence: "monthly", dayOfMonth: 20, amountCents: -4_500, amountSpreadCents: 0, essential: true },
   ],
 
   plannedEvents: [
@@ -184,6 +184,7 @@ export const freelance: Profile = {
     ],
   },
   birthYear: 1992,
+  payTaxes: "self",
   rules: { savingsStyle: "balanced", predictability: "lumpy", clientsPay: "1_2_weeks_late", cushionWeeks: 1, minWeeklySpendCents: 25_000 },
 
   history: [

@@ -74,6 +74,11 @@ export function resolveRules(p: Profile, cash?: { runwayWeeks: number; lowestLow
   };
 }
 
+/** The answer to "Are taxes taken out of your pay?", with a default by how they're paid. */
+export function payTaxesOf(p: Profile): NonNullable<Profile["payTaxes"]> {
+  return p.payTaxes ?? (p.profileType === "freelance" ? "self" : "withheld");
+}
+
 /** Push hard, paused: Balanced shares, keeping the reason so the UI can say why. */
 export function pauseToBalanced(r: ResolvedRules, pausedBy: NonNullable<ResolvedRules["pausedBy"]>): ResolvedRules {
   const s = STYLES.balanced;
@@ -89,5 +94,7 @@ export function incomeDefaults(p: Profile) {
   const spreadPct = { very_steady: 0, mostly_steady: 5, lumpy: 15, feast_famine: 30 }[r.predictability];
   /** How many days late a payment can land in the low case. */
   const lateDays = { on_time: 0, "1_2_weeks_late": 10, "3_plus_weeks_late": 21 }[r.clientsPay];
-  return { confidence, spreadPct, lateDays };
+  /** New income has tax withheld only if the user said taxes come out of their pay. */
+  const taxWithheld = payTaxesOf(p) === "withheld";
+  return { confidence, spreadPct, lateDays, taxWithheld };
 }

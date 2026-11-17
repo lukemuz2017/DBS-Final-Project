@@ -33,6 +33,27 @@ export interface DraftPayment {
   taxWithheld: boolean;
 }
 
+export type LoanKind = "student" | "car" | "mortgage" | "personal" | "other";
+
+export const LOAN_LABEL: Record<LoanKind, string> = {
+  student: "Student loan",
+  car: "Car loan",
+  mortgage: "Mortgage",
+  personal: "Personal loan",
+  other: "Loan",
+};
+
+/** "Any loans?" in setup: each becomes a loan account (what's owed) and its monthly payment. */
+export interface DraftLoan {
+  id: string;
+  kind: LoanKind;
+  lender: string;
+  /** What you still owe (optional; 0 = not given). */
+  balanceCents: number;
+  paymentCents: number;
+  dueDay: number;
+}
+
 export interface DraftBill {
   id: string;
   name: string;
@@ -48,6 +69,8 @@ export interface OnboardingDraft {
   state: string;
   birthYear?: number;
   profileType: "freelance" | "steady";
+  /** Are taxes taken out of your pay? */
+  payTaxes: "withheld" | "self" | "mixed";
   predictability: MoneyRules["predictability"];
   clientsPay: MoneyRules["clientsPay"];
   accounts: DraftAccount[];
@@ -56,6 +79,7 @@ export interface OnboardingDraft {
   /** Steady: take-home pay. */
   paycheck?: { amountCents: number; cadence: RepeatCadence; next: string };
   bills: DraftBill[];
+  loans: DraftLoan[];
   weeklySpendCents: number;
   savingsStyle: MoneyRules["savingsStyle"];
   cushionWeeks: MoneyRules["cushionWeeks"];
@@ -93,6 +117,21 @@ export function buildProfile(d: OnboardingDraft, today: string): Profile {
     purpose: a.kind === "savings" && (a.use === "emergency" || a.use === "goals") ? a.use : undefined,
     ...(a.kind === "credit_card" ? { paymentDueDay: a.dueDay || undefined, paysInFull: a.paysInFull !== false } : {}),
   }));
+  // Loans: the balance owed is a (not counted) loan account; the payment is a monthly bill.
+  for (const l of d.loans.filter((x) => x.paymentCents > 0 || x.balanceCents > 0)) {
+    if (l.balanceCents > 0) {
+      accounts.push({
+        id: l.id,
+        institution: l.lender.trim(),
+        name: LOAN_LABEL[l.kind],
+        mask: "",
+        type: "loan",
+        tier: "excluded",
+        balanceCents: -l.balanceCents,
+        balanceAsOf: `${today}T12:00:00Z`,
+      });
+    }
+  }
   const taxAccount = d.accounts.find((a) => a.kind === "savings" && a.use === "taxes");
 
   // Defaults for income come from the money rules (how predictable, how late).
@@ -115,7 +154,8 @@ export function buildProfile(d: OnboardingDraft, today: string): Profile {
         cadence: "irregular",
         confidence,
         amountSpreadCents: Math.round((avg * spreadPct) / 100),
-        taxWithheld: pays.every((x) => x.taxWithheld),
+        // All taxed if the user said so; otherwise as marked per payment (default: not withheld).
+        taxWithheld: d.payTaxes === "withheld" || pays.every((x) => x.taxWithheld),
         payments: pays
           .sort((a, b) => (a.date < b.date ? -1 : 1))
           .map((x) => ({ expectedDate: x.date, amountCents: x.amountCents, latestDate: lateDays > 0 ? addDays(x.date, lateDays) : undefined })),
@@ -132,7 +172,8 @@ export function buildProfile(d: OnboardingDraft, today: string): Profile {
         cadence: pc.cadence,
         confidence: "certain",
         amountSpreadCents: 0,
-        taxWithheld: true,
+        // A regular paycheck is taxed unless the user pays their own (e.g. a 1099 retainer).
+        taxWithheld: d.payTaxes !== "self",
         payments: repeatPayments(pc.cadence, pc.next, pc.amountCents, 0, today),
         summary: `${usd(pc.amountCents)} ${{ weekly: "every week", biweekly: "every other week", monthly: "every month" }[pc.cadence]}, after tax`,
       },
@@ -151,6 +192,18 @@ export function buildProfile(d: OnboardingDraft, today: string): Profile {
       amountSpreadCents: 0,
       essential: b.category !== "subscriptions",
     }));
+  for (const l of d.loans.filter((x) => x.paymentCents > 0)) {
+    recurringBills.push({
+      id: `loanpay-${l.id}`,
+      name: `${l.lender.trim() ? `${l.lender.trim()} ` : ""}${LOAN_LABEL[l.kind].toLowerCase()}`.replace(/^./, (c) => c.toUpperCase()),
+      category: l.kind === "mortgage" ? "housing" : "debt",
+      cadence: "monthly",
+      dayOfMonth: Math.min(31, Math.max(1, Math.round(l.dueDay) || 1)),
+      amountCents: -l.paymentCents,
+      amountSpreadCents: 0,
+      essential: true,
+    });
+  }
   // A card carrying a balance: the extra paid down each month is a debt payment from
   // checking. (Its new purchases are already in everyday spending.)
   for (const a of d.accounts) {
@@ -187,8 +240,10 @@ export function buildProfile(d: OnboardingDraft, today: string): Profile {
     recurringBills,
     plannedEvents: [],
     spending: { weeklyMeanCents: d.weeklySpendCents, weeklySdCents: Math.round(d.weeklySpendCents * 0.3) },
+    payTaxes: d.payTaxes,
+    // Track estimated tax whenever some income has no tax withheld.
     tax:
-      d.profileType === "freelance"
+      d.payTaxes !== "withheld"
         ? {
             setAsidePct: d.taxPct,
             receivedThisPeriodCents: 0,

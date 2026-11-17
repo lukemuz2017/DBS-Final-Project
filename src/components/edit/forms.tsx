@@ -2,6 +2,8 @@
 
 import { useState, type FormEvent } from "react";
 import { FEATURES } from "@/lib/features";
+import { payTaxesOf } from "@/lib/engine/rules";
+import { estimatedTaxPeriod } from "@/lib/engine/taxPeriods";
 import { centsToInput, newId, parseDollars, repeatPayments, summarizeStream, type RepeatCadence } from "@/lib/edit";
 import { addDays, daysBetween, toDate, usd } from "@/lib/format";
 import type { Account, Confidence, Goal, IncomeStream, PlannedEvent, Profile, ProfileType, RecurringBill, TaxSetup, Tier } from "@/lib/types";
@@ -18,6 +20,12 @@ const TYPE_HELP: Record<ProfileType, string> = {
   steady: "Narrow range, goals first. Good for anyone with a regular paycheck.",
 };
 
+export const PAY_TAXES: { value: "withheld" | "self" | "mixed"; label: string }[] = [
+  { value: "withheld", label: "Yes, taken out (W-2)" },
+  { value: "self", label: "No, I pay my own (1099)" },
+  { value: "mixed", label: "Some of each" },
+];
+
 export function ProfileForm({ p, onSave, onCancel }: Done & { p: Profile; onSave: (p: Profile) => void }) {
   const [name, setName] = useState(p.name);
   const [role, setRole] = useState(p.role);
@@ -26,7 +34,8 @@ export function ProfileForm({ p, onSave, onCancel }: Done & { p: Profile; onSave
   const [type, setType] = useState<ProfileType>(p.profileType);
   const [target, setTarget] = useState(String(p.runwayTargetWeeks));
   const [conf, setConf] = useState<"80" | "90">(String(p.rangeConfidence) as "80" | "90");
-  const [taxOn, setTaxOn] = useState(Boolean(p.tax));
+  const [payTaxes, setPayTaxes] = useState(payTaxesOf(p));
+  const taxOn = payTaxes !== "withheld";
   const [taxPct, setTaxPct] = useState(String(p.tax?.setAsidePct ?? 30));
   const [taxReceived, setTaxReceived] = useState(centsToInput(p.tax?.receivedThisPeriodCents ?? 0));
   const reserves = p.accounts.filter((a) => a.tier === "reserve");
@@ -40,15 +49,16 @@ export function ProfileForm({ p, onSave, onCancel }: Done & { p: Profile; onSave
     if (!name.trim()) return setError("Add a name.");
     if (taxOn && (!Number.isFinite(pct) || pct < 0 || pct > 60)) return setError("Tax set-aside should be between 0% and 60%.");
     if (taxOn && (received === null || received < 0)) return setError("Untaxed income received should be a dollar amount.");
+    const period = estimatedTaxPeriod(p.today);
     const tax: TaxSetup | undefined = taxOn
       ? {
           setAsidePct: pct,
           receivedThisPeriodCents: received ?? 0,
-          periodLabel: p.tax?.periodLabel ?? "Sep 1 – Dec 31, 2026",
-          periodEnd: p.tax?.periodEnd ?? "2026-12-31",
-          dueDate: p.tax?.dueDate ?? "2027-01-15",
+          periodLabel: p.tax?.periodLabel ?? period.periodLabel,
+          periodEnd: p.tax?.periodEnd ?? period.periodEnd,
+          dueDate: p.tax?.dueDate ?? period.dueDate,
           reserveAccountId: taxAccount || undefined,
-          note: p.tax?.note ?? "Federal and state estimated tax for Q4 2026, due Jan 15. The set-aside rate is a rule of thumb; your real bill depends on your full-year income.",
+          note: p.tax?.note ?? "Federal (and state, if your state has income tax) estimated tax for this period. The set-aside rate is a rule of thumb; your real bill depends on your full-year income.",
         }
       : undefined;
     onSave({
@@ -61,6 +71,7 @@ export function ProfileForm({ p, onSave, onCancel }: Done & { p: Profile; onSave
       profileType: type,
       runwayTargetWeeks: Number(target),
       rangeConfidence: Number(conf) as 80 | 90,
+      payTaxes,
       tax,
     });
   }
@@ -98,10 +109,11 @@ export function ProfileForm({ p, onSave, onCancel }: Done & { p: Profile; onSave
       </div>
 
       <div className="space-y-3 rounded-xl bg-[#faf6ef] p-4 ring-1 ring-line">
-        <Check checked={taxOn} onChange={setTaxOn}>
-          <span className="font-bold">Track estimated tax</span>
-          <span className="block text-xs text-muted">For income with no tax withheld (freelance, side work, most fellowships).</span>
-        </Check>
+        <div className="space-y-2">
+          <div className="text-sm font-bold">Are taxes taken out of your pay?</div>
+          <Segmented label="Are taxes taken out of your pay?" value={payTaxes} onChange={setPayTaxes} options={PAY_TAXES} />
+          <p className="text-xs text-muted">{taxOn ? "Runway sets aside tax from untaxed income and reminds you of quarterly estimated-tax due dates." : "Your employer withholds tax, so there's nothing to set aside."}</p>
+        </div>
         {taxOn && (
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Set aside" hint="Share of untaxed income">
@@ -156,13 +168,13 @@ function detectRepeat(s?: IncomeStream) {
   return { cadence: s.cadence as RepeatCadence, amount: centsToInput(amt), next: first.expectedDate, late: String(first.latestDate ? daysBetween(first.expectedDate, first.latestDate) : 0) };
 }
 
-export function IncomeForm({ stream, today, defaults, onSave, onDelete, onCancel }: Done & { stream?: IncomeStream; today: string; defaults?: { confidence: Confidence; lateDays: number }; onSave: (s: IncomeStream) => void; onDelete?: () => void }) {
+export function IncomeForm({ stream, today, defaults, onSave, onDelete, onCancel }: Done & { stream?: IncomeStream; today: string; defaults?: { confidence: Confidence; lateDays: number; taxWithheld?: boolean }; onSave: (s: IncomeStream) => void; onDelete?: () => void }) {
   const rep = detectRepeat(stream);
   const [name, setName] = useState(stream?.name ?? "");
   const [kind, setKind] = useState<IncomeStream["kind"]>(stream?.kind ?? "freelance_client");
   // New income starts from the user's money rules: how predictable it is and how late clients pay.
   const [confidence, setConfidence] = useState<Confidence>(stream?.confidence ?? defaults?.confidence ?? "likely");
-  const [taxWithheld, setTaxWithheld] = useState(stream?.taxWithheld ?? false);
+  const [taxWithheld, setTaxWithheld] = useState(stream?.taxWithheld ?? defaults?.taxWithheld ?? false);
   const [spread, setSpread] = useState(centsToInput(stream?.amountSpreadCents ?? 0));
   const [note, setNote] = useState(stream?.payDelayNote ?? "");
   const [mode, setMode] = useState<"repeat" | "specific">(stream ? (rep ? "repeat" : "specific") : "specific");
@@ -309,7 +321,8 @@ export function IncomeForm({ stream, today, defaults, onSave, onDelete, onCancel
 
 const BILL_CATEGORIES: { value: RecurringBill["category"]; label: string }[] = [
   { value: "housing", label: "Rent / housing" },
-  { value: "utilities", label: "Utilities & phone" },
+  { value: "utilities", label: "Utilities (heat, electric, water)" },
+  { value: "phone", label: "Phone & internet" },
   { value: "insurance", label: "Insurance" },
   { value: "health", label: "Health" },
   { value: "debt", label: "Loan / debt payment" },

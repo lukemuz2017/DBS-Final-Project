@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { CLIENTS_PAY, CUSHION, PREDICTABILITY, StylePicker } from "@/components/edit/RulesForm";
 import { Field, inputCls, MoneyInput, Segmented } from "@/components/edit/fields";
+import { InstitutionInput } from "@/components/edit/InstitutionInput";
+import { PAY_TAXES } from "@/components/edit/forms";
 import { GapsList } from "@/components/gaps";
 import { centsToInput, newId, parseDollars, type RepeatCadence } from "@/lib/edit";
 import { addDays } from "@/lib/format";
-import { buildProfile, type AccountKind, type AccountUse, type DraftAccount, type DraftBill, type DraftPayment, type OnboardingDraft } from "@/lib/onboarding";
+import { buildProfile, type AccountKind, type AccountUse, type DraftAccount, type DraftBill, type DraftLoan, type DraftPayment, type LoanKind, LOAN_LABEL, type OnboardingDraft } from "@/lib/onboarding";
 import { todayIn } from "@/lib/store/planData";
 import { useUserProfile } from "@/lib/store/useUserProfile";
 import type { MoneyRules, RecurringBill } from "@/lib/types";
@@ -23,7 +25,6 @@ const ACCOUNT_KINDS: { value: AccountKind; label: string }[] = [
   { value: "savings", label: "Savings" },
   { value: "retirement", label: "Retirement" },
   { value: "credit_card", label: "Credit card" },
-  { value: "loan", label: "Loan" },
 ];
 const USES: { value: AccountUse; label: string }[] = [
   { value: "emergency", label: "Emergency fund" },
@@ -33,10 +34,10 @@ const USES: { value: AccountUse; label: string }[] = [
 ];
 const BILL_CATEGORIES: { value: RecurringBill["category"]; label: string }[] = [
   { value: "housing", label: "Rent / housing" },
-  { value: "utilities", label: "Utilities & phone" },
+  { value: "utilities", label: "Utilities (heat, electric, water)" },
+  { value: "phone", label: "Phone & internet" },
   { value: "insurance", label: "Insurance" },
   { value: "health", label: "Health" },
-  { value: "debt", label: "Loan payment" },
   { value: "transport", label: "Car / transit" },
   { value: "business", label: "Business" },
   { value: "subscriptions", label: "Subscriptions" },
@@ -68,6 +69,10 @@ export function Onboarding() {
   const [profileType, setProfileType] = useState<"freelance" | "steady">("freelance");
   const [predictability, setPredictability] = useState<MoneyRules["predictability"]>("lumpy");
   const [clientsPay, setClientsPay] = useState<MoneyRules["clientsPay"]>("on_time");
+  // "Are taxes taken out of your pay?" Defaults by how they're paid until answered.
+  const [taxAnswer, setPayTaxes] = useState<"withheld" | "self" | "mixed" | null>(null);
+  const payTaxes = taxAnswer ?? (profileType === "freelance" ? "self" : "withheld");
+  const untaxed = payTaxes !== "withheld";
   // Step 3
   const [accounts, setAccounts] = useState<(Row<DraftAccount> & { paydown?: string })[]>([{ id: newId("acct"), kind: "checking", institution: "", name: "", amount: "" }]);
   const [dismissed, setDismissed] = useState<string[]>([]);
@@ -76,6 +81,10 @@ export function Onboarding() {
   const [paycheck, setPaycheck] = useState({ amount: "", cadence: "biweekly" as RepeatCadence, next: addDays(today, 7) });
   const [bills, setBills] = useState<Row<DraftBill>[]>([{ id: newId("bill"), name: "Rent", amount: "", dayOfMonth: 1, category: "housing" }]);
   const [weeklySpend, setWeeklySpend] = useState("");
+  const [hasLoans, setHasLoans] = useState<"no" | "yes">("no");
+  const [loans, setLoans] = useState<(Omit<DraftLoan, "balanceCents" | "paymentCents"> & { balance: string; payment: string })[]>([
+    { id: newId("loan"), kind: "student", lender: "", balance: "", payment: "", dueDay: 1 },
+  ]);
   // Step 5
   const [style, setStyle] = useState<MoneyRules["savingsStyle"]>("balanced");
   const [cushion, setCushion] = useState<"0.5" | "1" | "2">("1");
@@ -92,11 +101,12 @@ export function Onboarding() {
   const draft: OnboardingDraft = {
     name, occupation, city, state: usState,
     birthYear: Number(birthYear) || undefined,
-    profileType, predictability, clientsPay,
+    profileType, payTaxes, predictability, clientsPay,
     accounts: accounts.map(({ amount, paydown, ...a }) => ({ ...a, amountCents: cents(amount), paydownCents: paydown ? cents(paydown) : undefined })),
     payments: payments.map(({ amount, ...x }) => ({ ...x, amountCents: cents(amount) })),
     paycheck: { amountCents: cents(paycheck.amount), cadence: paycheck.cadence, next: paycheck.next },
     bills: bills.map(({ amount, ...b }) => ({ ...b, amountCents: cents(amount) })),
+    loans: hasLoans === "yes" ? loans.map(({ balance, payment, ...l }) => ({ ...l, balanceCents: cents(balance), paymentCents: cents(payment) })) : [],
     weeklySpendCents: cents(weeklySpend),
     savingsStyle: style,
     cushionWeeks: Number(cushion) as MoneyRules["cushionWeeks"],
@@ -121,6 +131,7 @@ export function Onboarding() {
       if (profileType === "freelance" && !payments.every((x) => money(x.amount))) return "Payments should be dollar amounts.";
       if (profileType === "steady" && !cents(paycheck.amount)) return "Add your take-home pay per paycheck.";
       if (!bills.every((b) => money(b.amount) && b.dayOfMonth >= 1 && b.dayOfMonth <= 31)) return "Bills need a dollar amount and a day of the month (1–31).";
+      if (hasLoans === "yes" && !loans.every((l) => money(l.balance) && money(l.payment) && l.dueDay >= 1 && l.dueDay <= 31)) return "Loans need dollar amounts and a due day (1–31).";
       if (!money(weeklySpend)) return "Everyday spending should be a dollar amount.";
     }
     if (step === 4) {
@@ -177,6 +188,9 @@ export function Onboarding() {
             <Field label="How predictable is your income?" hint="Sets how wide the forecast range is and how cautious Pay yourself is.">
               {() => <Segmented label="How predictable is your income?" value={predictability} onChange={setPredictability} options={PREDICTABILITY} />}
             </Field>
+            <Field label="Are taxes taken out of your pay?" hint={untaxed ? "Runway will set aside tax from untaxed income and remind you of quarterly due dates." : "Your employer withholds tax, so there's nothing to set aside."}>
+              {() => <Segmented label="Are taxes taken out of your pay?" value={payTaxes} onChange={setPayTaxes} options={PAY_TAXES} />}
+            </Field>
             {profileType === "freelance" && (
               <Field label="Clients usually pay" hint="Late payments land later in the low case.">{() => <Segmented label="Clients usually pay" value={clientsPay} onChange={setClientsPay} options={CLIENTS_PAY} />}</Field>
             )}
@@ -197,7 +211,7 @@ export function Onboarding() {
                         </select>
                       )}
                     </Field>
-                    <Field label="Bank">{(id) => <input id={id} className={inputCls} value={a.institution} placeholder="e.g. Chase" onChange={(e) => upd(setAccounts, a.id, { institution: e.target.value })} />}</Field>
+                    <Field label="Bank">{(id) => <InstitutionInput id={id} value={a.institution} kind={a.kind} onChange={(v) => upd(setAccounts, a.id, { institution: v })} />}</Field>
                     <Field label="Nickname">{(id) => <input id={id} className={inputCls} value={a.name} placeholder="optional" onChange={(e) => upd(setAccounts, a.id, { name: e.target.value })} />}</Field>
                     <Field label={a.kind === "credit_card" || a.kind === "loan" ? "You owe" : "Balance"}>{(id) => <MoneyInput id={id} value={a.amount} onChange={(v) => upd(setAccounts, a.id, { amount: v })} />}</Field>
                   </div>
@@ -212,7 +226,7 @@ export function Onboarding() {
                   )}
                   {a.kind === "savings" && (
                     <div className="mt-3">
-                      <Segmented label="Used for" value={a.use ?? "general"} onChange={(v) => upd(setAccounts, a.id, { use: v })} options={profileType === "freelance" ? USES : USES.filter((u) => u.value !== "taxes")} />
+                      <Segmented label="Used for" value={a.use ?? "general"} onChange={(v) => upd(setAccounts, a.id, { use: v })} options={untaxed ? USES : USES.filter((u) => u.value !== "taxes")} />
                     </div>
                   )}
                   {accounts.length > 1 && (
@@ -241,10 +255,16 @@ export function Onboarding() {
                 <>
                   <ul className="space-y-2">
                     {payments.map((x) => (
-                      <li key={x.id} className="grid gap-3 rounded-2xl border border-line bg-surface p-3 sm:grid-cols-[1fr_150px_140px]">
+                      <li key={x.id} className={`grid items-end gap-3 rounded-2xl border border-line bg-surface p-3 ${payTaxes === "mixed" ? "sm:grid-cols-[1fr_150px_140px_auto]" : "sm:grid-cols-[1fr_150px_140px]"}`}>
                         <Field label="Client">{(id) => <input id={id} className={inputCls} value={x.client} placeholder="Who's paying" onChange={(e) => upd(setPayments, x.id, { client: e.target.value })} />}</Field>
                         <Field label="Expected">{(id) => <input id={id} type="date" className={inputCls} value={x.date} min={today} onChange={(e) => upd(setPayments, x.id, { date: e.target.value })} />}</Field>
                         <Field label="Amount">{(id) => <MoneyInput id={id} value={x.amount} onChange={(v) => upd(setPayments, x.id, { amount: v })} />}</Field>
+                        {payTaxes === "mixed" && (
+                          <label className="flex items-center gap-2 pb-2 text-sm">
+                            <input type="checkbox" className="size-4 accent-[var(--accent)]" checked={x.taxWithheld} onChange={(e) => upd(setPayments, x.id, { taxWithheld: e.target.checked })} />
+                            Tax withheld
+                          </label>
+                        )}
                       </li>
                     ))}
                   </ul>
@@ -285,6 +305,31 @@ export function Onboarding() {
               </ul>
               {bills.length < 8 && <AddButton onClick={() => setBills((rows) => [...rows, { id: newId("bill"), name: "", amount: "", dayOfMonth: 1, category: "utilities" }])}>Add a bill</AddButton>}
             </Section>
+            <Section title="Any loans?">
+              <Segmented label="Any loans?" value={hasLoans} onChange={setHasLoans} options={[{ value: "no", label: "No" }, { value: "yes", label: "Yes" }]} />
+              {hasLoans === "yes" && (
+                <>
+                  <ul className="mt-2 space-y-2">
+                    {loans.map((l) => (
+                      <li key={l.id} className="grid gap-3 rounded-2xl border border-line bg-surface p-3 sm:grid-cols-[140px_1fr_120px_120px_80px]">
+                        <Field label="Type">
+                          {(id) => (
+                            <select id={id} className={inputCls} value={l.kind} onChange={(e) => upd(setLoans, l.id, { kind: e.target.value as LoanKind })}>
+                              {(Object.keys(LOAN_LABEL) as LoanKind[]).map((k) => <option key={k} value={k}>{LOAN_LABEL[k]}</option>)}
+                            </select>
+                          )}
+                        </Field>
+                        <Field label="Lender">{(id) => <InstitutionInput id={id} value={l.lender} kind="loan" placeholder="e.g. Nelnet" onChange={(v) => upd(setLoans, l.id, { lender: v })} />}</Field>
+                        <Field label="You owe">{(id) => <MoneyInput id={id} value={l.balance} onChange={(v) => upd(setLoans, l.id, { balance: v })} placeholder="optional" />}</Field>
+                        <Field label="Per month">{(id) => <MoneyInput id={id} value={l.payment} onChange={(v) => upd(setLoans, l.id, { payment: v })} />}</Field>
+                        <Field label="Due day">{(id) => <input id={id} className={inputCls} inputMode="numeric" value={String(l.dueDay)} onChange={(e) => upd(setLoans, l.id, { dueDay: Number(e.target.value.replace(/\D/g, "").slice(0, 2)) || 0 })} />}</Field>
+                      </li>
+                    ))}
+                  </ul>
+                  <AddButton onClick={() => setLoans((rows) => [...rows, { id: newId("loan"), kind: "car", lender: "", balance: "", payment: "", dueDay: 1 }])}>Add another loan</AddButton>
+                </>
+              )}
+            </Section>
             <Field label="Everyday spending per week, including what you put on cards" hint="Groceries, coffee, rides: everything that isn't a bill above. Don't add your card payment as a bill; it would count the same spending twice.">
               {(id) => <MoneyInput id={id} value={weeklySpend} onChange={setWeeklySpend} placeholder="150" />}
             </Field>
@@ -293,14 +338,14 @@ export function Onboarding() {
 
         {step === 4 && (
           <>
-            <Field label="Savings style">{() => <StylePicker value={style} onChange={setStyle} taxPct={profileType === "freelance" ? Number(taxPct) || 0 : 0} />}</Field>
+            <Field label="Savings style">{() => <StylePicker value={style} onChange={setStyle} taxPct={untaxed ? Number(taxPct) || 0 : 0} />}</Field>
             <p className="-mt-2 text-xs text-muted">The Payday Plan only moves money checking can spare. Push hard pauses itself when cash gets tight or would squeeze your minimum spending.</p>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Keep in checking as a cushion">{() => <Segmented label="Cushion" value={cushion} onChange={setCushion} options={CUSHION} />}</Field>
               <Field label="Cash Runway goal" hint="How long your cash should last if income stopped.">
                 {() => <Segmented label="Cash Runway goal" value={runwayTarget} onChange={setRunwayTarget} options={[{ value: "8", label: "2 months" }, { value: "13", label: "3 months" }, { value: "17", label: "4 months" }, { value: "26", label: "6 months" }]} />}
               </Field>
-              {profileType === "freelance" && (
+              {untaxed && (
                 <Field label="Set aside for taxes" hint="Share of each client payment. 25–30% is a common rule of thumb.">
                   {(id) => <input id={id} className={inputCls} inputMode="decimal" value={taxPct} onChange={(e) => setTaxPct(e.target.value.replace(/[^\d.]/g, ""))} />}
                 </Field>

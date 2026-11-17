@@ -108,8 +108,9 @@ describe("money rules", () => {
   });
 
   it("turns predictability into defaults for new income", () => {
-    expect(incomeDefaults(base({ rules: { predictability: "very_steady", clientsPay: "on_time" } }))).toEqual({ confidence: "certain", spreadPct: 0, lateDays: 0 });
-    expect(incomeDefaults(base({ rules: { predictability: "feast_famine", clientsPay: "3_plus_weeks_late" } }))).toEqual({ confidence: "uncertain", spreadPct: 30, lateDays: 21 });
+    expect(incomeDefaults(base({ rules: { predictability: "very_steady", clientsPay: "on_time" }, payTaxes: "withheld" }))).toEqual({ confidence: "certain", spreadPct: 0, lateDays: 0, taxWithheld: true });
+    // A freelancer who hasn't answered pays their own tax by default.
+    expect(incomeDefaults(base({ rules: { predictability: "feast_famine", clientsPay: "3_plus_weeks_late" } }))).toEqual({ confidence: "uncertain", spreadPct: 30, lateDays: 21, taxWithheld: false });
   });
 });
 

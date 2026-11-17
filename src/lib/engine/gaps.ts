@@ -6,7 +6,7 @@ import { usd } from "../format";
 import type { Profile } from "../types";
 import { forecast } from "./forecast";
 import { retirementPlan } from "./plan";
-import { rulesOf } from "./rules";
+import { payTaxesOf, rulesOf } from "./rules";
 
 export interface AccountGap {
   /** Stable id, stored in rules.dismissedGaps when the user says "I have one" or "Not now". */
@@ -28,7 +28,9 @@ export function accountGaps(p: Profile): AccountGap[] {
   const gaps: AccountGap[] = [];
 
   // Most urgent first: untaxed income with nowhere to park the tax.
-  if (freelance && !taxAccount) {
+  // Anyone who pays their own taxes (all or some of their income), not just freelancers.
+  const paysOwnTax = payTaxesOf(p) !== "withheld" || Boolean(p.tax) || p.incomeStreams.some((s) => !s.taxWithheld && s.confidence !== "uncertain");
+  if (paysOwnTax && !taxAccount) {
     gaps.push({
       id: "tax-savings",
       title: "Open a separate savings account for taxes",

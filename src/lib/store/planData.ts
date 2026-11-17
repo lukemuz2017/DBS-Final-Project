@@ -28,7 +28,7 @@ export interface ProfileRow {
 
 /** What public.plans.data holds: everything about the user's money that isn't on the profile row. */
 export type PlanData = Pick<Profile, "accounts" | "incomeStreams" | "recurringBills" | "plannedEvents" | "spending" | "goals"> &
-  Partial<Pick<Profile, "tax" | "retirement" | "history">>;
+  Partial<Pick<Profile, "tax" | "retirement" | "history" | "payTaxes">>;
 
 export const PLAN_SCHEMA_VERSION = 1;
 
@@ -100,8 +100,8 @@ export function profileColumns(p: Profile): Omit<ProfileRow, "user_id" | "timezo
 }
 
 export function planDataOf(p: Profile): PlanData {
-  const { accounts, incomeStreams, recurringBills, plannedEvents, spending, goals, tax, retirement, history } = p;
-  return { accounts, incomeStreams, recurringBills, plannedEvents, spending, goals, tax, retirement, history };
+  const { accounts, incomeStreams, recurringBills, plannedEvents, spending, goals, tax, retirement, history, payTaxes } = p;
+  return { accounts, incomeStreams, recurringBills, plannedEvents, spending, goals, tax, retirement, history, payTaxes };
 }
 
 /**

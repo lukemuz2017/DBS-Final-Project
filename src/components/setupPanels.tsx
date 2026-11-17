@@ -12,10 +12,11 @@ import { Card } from "./ui";
 
 const CATEGORY_LABEL: Record<RecurringBill["category"], string> = {
   housing: "Housing",
-  utilities: "Utilities & phone",
+  utilities: "Utilities (heat & electric)",
+  phone: "Phone & internet",
   insurance: "Insurance",
   health: "Health",
-  debt: "Loans & debt",
+  debt: "Loan payments",
   card_payment: "Credit card payments",
   transport: "Transport",
   subscriptions: "Subscriptions",
