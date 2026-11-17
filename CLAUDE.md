@@ -9,13 +9,13 @@ A 12-week cash forecast for people with lumpy income (freelancers and students f
 
 ## Stack
 
-Next.js 16 (App Router, TypeScript, Tailwind v4) on Vercel · Supabase (Postgres, Auth, row-level security) · charts are hand-built SVG (`src/components/ForecastChart.tsx`), not Chart.js · Claude API only for the stretch-goal assistant. Bank data sits behind one provider interface: Plaid Sandbox, Teller dev and CSV import come later.
+Next.js 16 (App Router, TypeScript, Tailwind v4) on Vercel · Clerk sign-in (`@clerk/nextjs`, `src/proxy.ts` protects `/app` only) · Supabase (Postgres, row-level security) trusting Clerk's session token via Third-Party Auth · charts are hand-built SVG (`src/components/ForecastChart.tsx`), not Chart.js · Claude API only for the stretch-goal assistant. Bank data sits behind one provider interface: Plaid Sandbox, Teller dev and CSV import come later.
 
 @AGENTS.md
 
 @docs/design-decisions.md
 
-**Current phase: dummy data only.** No bank connections yet; don't add Plaid or Teller code unless the user asks. Demo personas live in code at `src/lib/demo/`: Jordan (freelance photographer, Brooklyn) and Sam (gig worker turned salaried, LA). Priya (Booth MBA student, Chicago) is parked behind `FEATURES.students` in `src/lib/features.ts`: hidden in the app, still covered by tests via `ALL_DEMO_PROFILES`. Their shapes in `src/lib/types.ts` mirror the data model, so a `fixture` provider can later seed them into Supabase without changing the engine or UI. Keep their numbers realistic for their city and situation. Focus is UI/UX and the forecast engine.
+**Current phase: no bank connections yet.** Signed-in users (`/app`) enter accounts by hand and save to Supabase (`profiles` + `plans`, RLS on `auth.jwt()->>'sub'`); the public demo (`/dashboard`) uses personas. No bank connections yet; don't add Plaid or Teller code unless the user asks. Demo personas live in code at `src/lib/demo/`: Jordan (freelance photographer, Brooklyn) and Sam (gig worker turned salaried, LA). Priya (Booth MBA student, Chicago) is parked behind `FEATURES.students` in `src/lib/features.ts`: hidden in the app, still covered by tests via `ALL_DEMO_PROFILES`. Their shapes in `src/lib/types.ts` mirror the data model, so a `fixture` provider can later seed them into Supabase without changing the engine or UI. Keep their numbers realistic for their city and situation. Focus is UI/UX and the forecast engine.
 
 **Look and feel:** the proposal page's palette is the baseline (warm paper background, faded green accent, yellow "sun" glow; Fraunces headings, Nunito Sans body). Tokens are in `src/app/globals.css`.
 
@@ -27,8 +27,10 @@ Next.js 16 (App Router, TypeScript, Tailwind v4) on Vercel · Supabase (Postgres
 - `npm run peek`: prints each persona's forecast in the terminal.
 - `npx tsx scripts/peek-plan.ts`: prints pay-yourself, payment splits, retirement and refund plans per persona.
 - After moving or deleting route files, run `npx next typegen` before `tsc`. Next 16 generates route types into `.next/`.
+- Supabase CLI (`npx supabase …`; in the user's PowerShell use `npx.cmd` and `--agent no`): `migration new <name>`, `db push --remote` (local is the default target), read-only checks with `db query --remote --read-only "<sql>"`. The linked project is DBS-Final-Project; its main branch is labeled "production" by the CLI, but it is the dev project.
+- Deploys: Vercel builds `main` as production and every other pushed branch as a preview. Env vars (Production + Preview): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` (names in `.env.example`).
 
-Layout: `src/lib/engine/forecast.ts` (pure engine) · `src/lib/engine/plan.ts` (pay yourself, payment splits, retirement, refund plan) · `src/lib/engine/goals.ts` · `src/lib/demo/` (personas) · `src/components/` (UI; `forecastPanels.tsx` week tiles/details/goals, `freelanceSection.tsx` Payday Plan/Tax/Pay yourself, `planCards.tsx` retirement/refund plan, `suggestions.tsx` move flows and hover cards) · `src/app/dashboard/[persona]/page.tsx` (dashboard) · `src/lib/supabase/` (clients; not used by the demo yet) · `src/app/api/health` (dev-only Supabase key check).
+Layout: `src/lib/engine/forecast.ts` (pure engine) · `src/lib/engine/plan.ts` (pay yourself, payment splits, retirement, refund plan) · `src/lib/engine/goals.ts` · `src/lib/demo/` (personas) · `src/components/` (UI; `forecastPanels.tsx` week tiles/details/goals, `freelanceSection.tsx` Payday Plan/Tax/Pay yourself, `planCards.tsx` retirement/refund plan, `suggestions.tsx` move flows and hover cards) · `src/app/dashboard/[persona]/page.tsx` (public demo) · `src/app/app/` (signed-in app: welcome, setup at `/app/start`, preview) · `src/lib/store/` (demo/preview/user profile stores, DB mapping) · `src/lib/onboarding.ts` (setup answers → profile) · `src/lib/supabase/` (Clerk-token clients) · `supabase/migrations/` · `src/app/api/health` (dev-only Supabase key check).
 
 ## Rules that keep the numbers right
 
@@ -63,4 +65,5 @@ Layout: `src/lib/engine/forecast.ts` (pure engine) · `src/lib/engine/plan.ts` (
 - **Headless Edge/Chrome won't lay out narrower than about 504px**, even with `--window-size=390`. Test "phone" screenshots at 504px, or the page will look cut off when it isn't.
 - **If a style change doesn't show up, restart the dev server.** Turbopack can miss a `globals.css` edit while Vitest is writing its cache, and keep serving the old CSS. Check the served CSS (curl the chunk) before debugging the code.
 - **Demo edits live in the browser** (`src/lib/demo/useDemoProfile.ts`, localStorage key `runway-demo-v1:<persona>`). If you change the demo data shape, bump the version so old saved edits are ignored.
+- **Supabase refuses saves with 42501 if Clerk's token has no `"role": "authenticated"` claim** (the request runs as anon). Check the token's claims before blaming grants; Clerk adds the claim when its Supabase integration is activated. Also: `information_schema.role_table_grants` hides other roles' grants, so read `pg_class.relacl` instead.
 - **Don't touch `/` routing for Vercel.** `vercel.json` serves the proposal at `/`, so the app must keep working under `/dashboard`.
