@@ -6,7 +6,8 @@ import { useEffect, useRef, useState } from "react";
 // The signed-in account button: initials (or the user's photo) in Runway's chip style,
 // the name beside it, and a small menu. Replaces Clerk's default purple avatar.
 
-export function AccountButton() {
+/** `displayName`: the name from the user's Runway profile, when they have one. */
+export function AccountButton({ displayName }: { displayName?: string }) {
   const { user, isLoaded } = useUser();
   const { openUserProfile, signOut } = useClerk();
   const [open, setOpen] = useState(false);
@@ -29,7 +30,8 @@ export function AccountButton() {
   if (!isLoaded || !user) return <span aria-hidden="true" className="inline-block h-10 w-36 rounded-xl bg-surface/70 ring-1 ring-line" />;
 
   const email = user.primaryEmailAddress?.emailAddress ?? "";
-  const name = user.fullName || user.firstName || user.username || email.split("@")[0] || "Your account";
+  // The name from setup comes first; before setup, whatever the Clerk account has.
+  const name = displayName?.trim() || user.fullName || user.firstName || user.username || email.split("@")[0] || "Your account";
   const initials = name.split(/[\s.+_-]+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
 
   return (

@@ -15,7 +15,7 @@ import type { Profile } from "@/lib/types";
 // The signed-in app (/app): the user's own data, a welcome screen for new accounts,
 // and a sample-data preview that never saves anything.
 
-function AccountMenu({ preview }: { preview?: boolean }) {
+function AccountMenu({ preview, name }: { preview?: boolean; name?: string }) {
   return (
     <div className="flex items-center gap-3">
       {!preview && (
@@ -23,15 +23,15 @@ function AccountMenu({ preview }: { preview?: boolean }) {
           Preview sample data
         </Link>
       )}
-      <AccountButton />
+      <AccountButton displayName={name} />
     </div>
   );
 }
 
-function userChrome(saveError: string | null): Chrome {
+function userChrome(saveError: string | null, name: string): Chrome {
   return {
     basePath: "/app",
-    right: <AccountMenu />,
+    right: <AccountMenu name={name} />,
     banner: saveError ? <Strip tone="warn">{saveError}</Strip> : undefined,
   };
 }
@@ -68,12 +68,12 @@ function Centered({ children }: { children: ReactNode }) {
 
 export function UserDashboard() {
   const state = useUserProfile();
-  return <Gate state={state}>{(s) => <DashboardView store={s.store} chrome={userChrome(s.saveError)} />}</Gate>;
+  return <Gate state={state}>{(s) => <DashboardView store={s.store} chrome={userChrome(s.saveError, s.store.profile.name)} />}</Gate>;
 }
 
 export function UserSetup() {
   const state = useUserProfile();
-  return <Gate state={state}>{(s) => <SetupView store={s.store} chrome={userChrome(s.saveError)} />}</Gate>;
+  return <Gate state={state}>{(s) => <SetupView store={s.store} chrome={userChrome(s.saveError, s.store.profile.name)} />}</Gate>;
 }
 
 /** First visit: set up your own forecast, or look around with sample data first. */
