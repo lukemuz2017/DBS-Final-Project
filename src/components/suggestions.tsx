@@ -65,7 +65,7 @@ export function ReasonDetail({ r }: { r: FlaggedRun }) {
 }
 
 function weeksText(r: FlaggedRun) {
-  return `T+${r.weeks[0]}W–T+${r.weeks[1]}W · ${fmtRange(r.start, r.end)}`;
+  return fmtRange(r.start, r.end);
 }
 
 // ---------------------------------------------------------------------------
@@ -186,7 +186,6 @@ export function SuggestionsButton({ f, p }: { f: Forecast; p: { name: string } }
         <div role="dialog" aria-label="Suggestions" className={`absolute ${alignRight ? "right-0" : "left-0"} top-full z-30 mt-2 max-h-[75vh] w-[min(460px,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-line bg-surface shadow-2xl`}>
           <div className="border-b border-line px-4 py-3">
             <div className="font-display text-base font-bold">Suggestions for {first}</div>
-            <div className="text-xs text-muted">{f.scope === "cash" ? "Based on checking + savings together." : "Based on your checking balance. Runway never moves money; you make the transfer."}</div>
           </div>
           <ol className="divide-y divide-line">
             {sorted.map((r) => {
