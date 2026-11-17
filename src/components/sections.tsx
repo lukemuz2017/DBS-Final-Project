@@ -114,11 +114,11 @@ const ACCOUNT_GROUPS: { id: string; label: string; types: Profile["accounts"][nu
   { id: "invest", label: "Investments & retirement", types: ["investment"], note: "Not counted as cash or runway." },
 ];
 
-export function AccountsCard({ p, onEdit, onConnect }: { p: Profile; onEdit?: (id: string) => void; onConnect?: () => void }) {
+export function AccountsCard({ p, onEdit, onConnect, connectLabel = "Connect a bank" }: { p: Profile; onEdit?: (id: string) => void; onConnect?: () => void; connectLabel?: string }) {
   return (
     <Card
       title="Accounts"
-      action={onConnect && <SmallButton onClick={onConnect}><PlusIcon /> Connect a bank</SmallButton>}
+      action={onConnect && <SmallButton onClick={onConnect}><PlusIcon /> {connectLabel}</SmallButton>}
     >
       {p.accounts.length === 0 && <p className="text-sm text-muted">No accounts connected.</p>}
       <div className="space-y-5">

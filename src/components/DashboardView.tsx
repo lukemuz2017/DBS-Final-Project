@@ -9,6 +9,8 @@ import { ForecastChart } from "@/components/ForecastChart";
 import { AppHeader, type Chrome } from "@/components/AppHeader";
 import { InfoTip } from "@/components/InfoTip";
 import { useEditor } from "@/components/edit/Editor";
+import { FinishSetup } from "@/components/FinishSetup";
+import { dismissGap } from "@/components/gaps";
 import { PencilIcon } from "@/components/edit/fields";
 import {
   HeroStats,
@@ -68,6 +70,17 @@ export function DashboardView({ store, chrome }: { store: ProfileStore; chrome: 
                 <button type="button" onClick={() => edit({ kind: "profile" })} className="inline-flex items-center gap-1 rounded-lg bg-white/70 px-2 py-0.5 text-xs font-bold text-accent-strong ring-1 ring-line hover:bg-white">
                   <PencilIcon /> Edit profile
                 </button>
+                <FinishSetup
+                  p={p}
+                  onDismiss={(id) => update((q) => dismissGap(q, id))}
+                  onAct={(g) => {
+                    if (g.id === "tax-savings") edit({ kind: "addAccount", preset: { kind: "savings", use: "taxes" } });
+                    else if (g.id === "emergency-savings") edit({ kind: "addAccount", preset: { kind: "savings", use: "emergency", name: "Emergency fund" } });
+                    else if (g.id === "retirement-self") edit({ kind: "addAccount", preset: { kind: "retirement", name: "SEP IRA" } });
+                    else if (g.id === "emergency-goal") edit({ kind: "goal" });
+                    else setView("goals"); // employer match: the Retirement card on Goals
+                  }}
+                />
               </div>
               <h1 className="mt-2 font-display text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl">{first}&apos;s next 12 weeks</h1>
             </div>

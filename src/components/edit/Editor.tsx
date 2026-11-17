@@ -7,6 +7,7 @@ import { Drawer } from "./Drawer";
 import { incomeDefaults } from "@/lib/engine/rules";
 import { AccountForm, BillForm, EventForm, GoalForm, IncomeForm, ProfileForm } from "./forms";
 import { RulesForm } from "./RulesForm";
+import { AddAccountForm, type AddAccountPreset } from "./AddAccountForm";
 
 // One place that knows how to open and save every editor, shared by the
 // dashboard and the setup page.
@@ -19,6 +20,7 @@ export type Editing =
   | { kind: "goal"; id?: string }
   | { kind: "account"; id: string }
   | { kind: "connect" }
+  | { kind: "addAccount"; preset?: AddAccountPreset }
   | { kind: "rules" };
 
 function upsert<T extends { id: string }>(list: T[], item: T): T[] {
@@ -128,6 +130,8 @@ export function useEditor(p: Profile, update: (fn: (p: Profile) => Profile) => v
           />
         ),
       };
+  } else if (editing?.kind === "addAccount") {
+    drawer = { title: "Add an account", body: <AddAccountForm p={p} preset={editing.preset} onCancel={close} onSave={(np) => save(() => np)} /> };
   } else if (editing?.kind === "connect") {
     drawer = {
       title: "Connect a bank",

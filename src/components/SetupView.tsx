@@ -123,8 +123,22 @@ export function SetupView({ store, chrome }: { store: ProfileStore; chrome: Chro
   } else if (section === "accounts") {
     content = (
       <div className="space-y-4">
-        <GapsList p={p} onDismiss={(id) => update((q) => dismissGap(q, id))} />
-        <AccountsCard p={p} onEdit={(id) => edit({ kind: "account", id })} onConnect={() => edit({ kind: "connect" })} />
+        <GapsList
+          p={p}
+          onDismiss={(id) => update((q) => dismissGap(q, id))}
+          onAct={store.mode === "user" ? (g) => {
+            if (g.id === "tax-savings") edit({ kind: "addAccount", preset: { kind: "savings", use: "taxes" } });
+            else if (g.id === "emergency-savings") edit({ kind: "addAccount", preset: { kind: "savings", use: "emergency", name: "Emergency fund" } });
+            else if (g.id === "retirement-self") edit({ kind: "addAccount", preset: { kind: "retirement", name: "SEP IRA" } });
+            else if (g.id === "emergency-goal") edit({ kind: "goal" });
+          } : undefined}
+        />
+        <AccountsCard
+          p={p}
+          onEdit={(id) => edit({ kind: "account", id })}
+          onConnect={() => edit(store.mode === "user" ? { kind: "addAccount" } : { kind: "connect" })}
+          connectLabel={store.mode === "user" ? "Add an account" : "Connect a bank"}
+        />
       </div>
     );
   } else if (section === "income") {

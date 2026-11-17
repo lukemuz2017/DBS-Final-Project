@@ -358,7 +358,7 @@ export function Onboarding() {
         )}
       </div>
 
-      {error && <p className="mt-5 text-sm font-bold text-warn" role="alert">{error}</p>}
+      {error && <p className="mt-5 rounded-xl bg-warn-soft px-3 py-2 text-sm font-bold text-warn ring-1 ring-warn/30" role="alert">{error}</p>}
       <div className="mt-8 flex items-center justify-between gap-3 border-t border-line pt-5">
         <button type="button" onClick={() => { setError(""); setStep(Math.max(0, step - 1)); }} className={`rounded-xl px-4 py-2 text-sm font-bold text-muted hover:text-ink ${step === 0 ? "invisible" : ""}`}>Back</button>
         <button type="button" disabled={saving} onClick={next} className="rounded-xl bg-accent px-5 py-2.5 text-sm font-bold text-white hover:bg-accent-strong disabled:opacity-60">
