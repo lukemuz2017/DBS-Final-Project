@@ -1,6 +1,7 @@
 "use client";
 
-import { UserButton, useUser } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
+import { AccountButton } from "@/components/AccountButton";
 import Link from "next/link";
 import { useMemo, useState, type ReactNode } from "react";
 import type { Chrome } from "@/components/AppHeader";
@@ -22,7 +23,7 @@ function AccountMenu({ preview }: { preview?: boolean }) {
           Preview sample data
         </Link>
       )}
-      <UserButton />
+      <AccountButton />
     </div>
   );
 }
@@ -87,7 +88,7 @@ export function Welcome() {
             <span aria-hidden="true" className="size-7 rounded-full bg-[radial-gradient(circle_at_35%_35%,var(--sun),var(--accent)_75%)]" />
             <span className="font-display text-2xl font-bold">Runway</span>
           </span>
-          <UserButton />
+          <AccountButton />
         </div>
         <h1 className="mt-10 font-display text-4xl font-bold tracking-tight sm:text-5xl">Welcome{first ? `, ${first}` : ""}.</h1>
         <p className="mt-3 text-lg text-muted">How would you like to start?</p>
@@ -129,7 +130,7 @@ function previewChrome(p: Profile, query: string): Chrome {
     right: (
       <div className="flex items-center gap-3">
         <Link href="/app/preview" className="text-sm font-bold text-muted hover:text-ink">Change sample</Link>
-        <UserButton />
+        <AccountButton />
       </div>
     ),
     banner: (
@@ -165,7 +166,7 @@ export function PreviewChooser() {
             <span aria-hidden="true" className="size-7 rounded-full bg-[radial-gradient(circle_at_35%_35%,var(--sun),var(--accent)_75%)]" />
             <span className="font-display text-2xl font-bold">Runway</span>
           </Link>
-          <UserButton />
+          <AccountButton />
         </div>
         <h1 className="mt-10 font-display text-4xl font-bold tracking-tight">Preview with sample data</h1>
         <p className="mt-2 text-muted">Pick what sounds like you. Nothing here is saved.</p>
