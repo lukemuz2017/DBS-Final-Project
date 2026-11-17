@@ -53,6 +53,11 @@ Settled decisions from UI iteration with the user. Read this before changing the
 
 ## Open items
 
+As of Nov 17, 2026 (v1 shipped; v2 due Dec 1):
+- Push hard pausing itself isn't shown anywhere since the Payday Plan footer was trimmed to one line; proposed: a hover note on the Payday Plan title.
+- Not built yet: the "How to read Runway" first-visit tour, retirement setup in onboarding (Account Details only), adding a loan outside setup.
+- The proposal no longer shows at "/" on Vercel (the app's front door does); it's at /proposal/v2.html. Revisit vercel.json if the root should be the proposal.
+
 - Education "moments" (#6): user is torn, discuss before building.
 - Seasonality and invoice lateness (#5): deferred; needs an industry field at setup.
 - Goals pace checks affordability only for goals linked to a savings account (through the Payday Plan); unlinked goals still use typed amounts that the forecast doesn't subtract.
