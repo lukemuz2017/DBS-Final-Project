@@ -16,6 +16,8 @@ export interface Account {
   tier: Tier;
   balanceCents: number; // credit cards negative (owed)
   balanceAsOf: string; // ISO timestamp
+  /** Savings only: what the account is for. Tax savings is set in the tax settings instead. */
+  purpose?: "emergency" | "goals";
   connectedAt?: string; // set when added through the (demo) connect flow
 }
 
@@ -73,6 +75,8 @@ export interface Goal {
   targetDate: string;
   savedCents: number;
   monthlyContributionCents: number;
+  /** Savings account the money for this goal goes to. */
+  accountId?: string;
 }
 
 export interface Transaction {
@@ -121,6 +125,15 @@ export interface Profile {
   history?: { label: string; date: string }[];
   retirement?: RetirementSetup;
   studentLoans?: StudentLoanSetup;
+  /** For the long-term retirement outlook. */
+  birthYear?: number;
+}
+
+/** One deposit into a retirement account, as the plan provider reports it. */
+export interface RetirementContribution {
+  date: string;
+  amountCents: number;
+  source: "you" | "employer";
 }
 
 /** Retirement saving. Self-employed people use a SEP IRA or Solo 401(k); employees an employer plan. */
@@ -129,6 +142,10 @@ export interface RetirementSetup {
   accountId?: string;
   /** Contributed so far this calendar year. */
   ytdContributedCents: number;
+  /** Recent deposits (at least the last 12 weeks), from the plan provider. */
+  contributions?: RetirementContribution[];
+  /** Age you plan to stop working. Defaults to 67. */
+  retirementAge?: number;
   // Self-employed
   /** Estimated net self-employment profit for the year (sets the SEP limit). */
   estNetProfitCents?: number;

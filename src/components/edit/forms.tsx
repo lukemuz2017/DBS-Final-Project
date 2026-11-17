@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { FEATURES } from "@/lib/features";
 import { centsToInput, newId, parseDollars, repeatPayments, summarizeStream, type RepeatCadence } from "@/lib/edit";
 import { addDays, daysBetween, toDate, usd } from "@/lib/format";
 import type { Account, Confidence, Goal, IncomeStream, PlannedEvent, Profile, ProfileType, RecurringBill, TaxSetup, Tier } from "@/lib/types";
@@ -75,7 +76,7 @@ export function ProfileForm({ p, onSave, onCancel }: Done & { p: Profile; onSave
 
       <div className="space-y-2">
         <div className="text-sm font-bold">How you get paid</div>
-        <Segmented label="Profile type" value={type} onChange={setType} options={[{ value: "freelance", label: "Freelance" }, { value: "student", label: "Student" }, { value: "steady", label: "Steady paycheck" }]} />
+        <Segmented label="Profile type" value={type} onChange={setType} options={[{ value: "freelance", label: "Freelance" }, ...(FEATURES.students || p.profileType === "student" ? [{ value: "student" as const, label: "Student" }] : []), { value: "steady", label: "Steady paycheck" }]} />
         <p className="text-xs text-muted">{TYPE_HELP[type]} This only changes what you see first; you can switch any time.</p>
       </div>
 
@@ -461,7 +462,8 @@ export function EventForm({ event, today, onSave, onDelete, onCancel }: Done & {
 // ---------------------------------------------------------------------------
 // Goal
 
-export function GoalForm({ goal, today, onSave, onDelete, onCancel }: Done & { goal?: Goal; today: string; onSave: (g: Goal) => void; onDelete?: () => void }) {
+export function GoalForm({ goal, today, accounts, onSave, onDelete, onCancel }: Done & { goal?: Goal; today: string; accounts: Account[]; onSave: (g: Goal) => void; onDelete?: () => void }) {
+  const [accountId, setAccountId] = useState(goal?.accountId ?? "");
   const [name, setName] = useState(goal?.name ?? "");
   const [kind, setKind] = useState<Goal["kind"]>(goal?.kind ?? "emergency_fund");
   const [target, setTarget] = useState(goal ? centsToInput(goal.targetCents) : "");
@@ -480,7 +482,7 @@ export function GoalForm({ goal, today, onSave, onDelete, onCancel }: Done & { g
     if (!t || t <= 0) return setError("Enter a target amount.");
     if (s === null || s < 0 || m === null || m < 0) return setError("Saved and monthly amounts should be dollar amounts.");
     if (!date || date <= today) return setError("Pick a date in the future.");
-    onSave({ id: goal?.id ?? newId("goal"), name: name.trim(), kind, targetCents: t, targetDate: date, savedCents: s, monthlyContributionCents: m });
+    onSave({ id: goal?.id ?? newId("goal"), name: name.trim(), kind, targetCents: t, targetDate: date, savedCents: s, monthlyContributionCents: m, accountId: accountId || undefined });
   }
 
   return (
@@ -502,8 +504,22 @@ export function GoalForm({ goal, today, onSave, onDelete, onCancel }: Done & { g
         </Field>
         <Field label="Target amount">{(id) => <MoneyInput id={id} value={target} onChange={setTarget} />}</Field>
         <Field label="By">{(id) => <input id={id} type="date" className={inputCls} value={date} onChange={(e) => setDate(e.target.value)} />}</Field>
-        <Field label="Saved so far">{(id) => <MoneyInput id={id} value={saved} onChange={setSaved} />}</Field>
-        <Field label="Putting in each month">{(id) => <MoneyInput id={id} value={monthly} onChange={setMonthly} />}</Field>
+        {accounts.length > 0 && (
+          <Field label="Saves into" hint={accountId ? "Saved and monthly amounts come from this account: its balance, plus what the Payday Plan or a recurring transfer puts in." : undefined}>
+            {(id) => (
+              <select id={id} className={inputCls} value={accountId} onChange={(e) => setAccountId(e.target.value)}>
+                <option value="">No specific account</option>
+                {accounts.map((a) => <option key={a.id} value={a.id}>{a.institution} {a.name}</option>)}
+              </select>
+            )}
+          </Field>
+        )}
+        {!accountId && (
+          <>
+            <Field label="Saved so far">{(id) => <MoneyInput id={id} value={saved} onChange={setSaved} />}</Field>
+            <Field label="Putting in each month">{(id) => <MoneyInput id={id} value={monthly} onChange={setMonthly} />}</Field>
+          </>
+        )}
       </div>
       {error && <p className="text-sm font-bold text-warn" role="alert">{error}</p>}
       <FormActions onCancel={onCancel} onDelete={onDelete} deleteLabel="Remove goal" confirming={confirming} setConfirming={setConfirming} />
@@ -521,9 +537,16 @@ const TIER_OPTIONS: { value: Tier; label: string; help: string }[] = [
   { value: "excluded", label: "Don't count", help: "Cards, loans, or anything to leave out." },
 ];
 
-export function AccountForm({ account, onSave, onDelete, onCancel }: Done & { account: Account; onSave: (a: Account) => void; onDelete: () => void }) {
+const PURPOSE_OPTIONS: { value: "" | "emergency" | "goals"; label: string; help: string }[] = [
+  { value: "emergency", label: "Emergency fund", help: "The Payday Plan tops it up; suggestions draw on it first." },
+  { value: "goals", label: "Goals", help: "Money for your goals. Suggestions draw on it last." },
+  { value: "", label: "General savings", help: "Counted as a buffer, drawn on after the emergency fund." },
+];
+
+export function AccountForm({ account, isTax, onSave, onDelete, onCancel }: Done & { account: Account; isTax?: boolean; onSave: (a: Account) => void; onDelete: () => void }) {
   const [name, setName] = useState(account.name);
   const [tier, setTier] = useState<Tier>(account.tier);
+  const [purpose, setPurpose] = useState<"" | "emergency" | "goals">(account.purpose ?? "");
   const [balance, setBalance] = useState((account.balanceCents < 0 ? "-" : "") + centsToInput(account.balanceCents));
   const [error, setError] = useState("");
   const [confirming, setConfirming] = useState(false);
@@ -533,7 +556,7 @@ export function AccountForm({ account, onSave, onDelete, onCancel }: Done & { ac
     const b = parseDollars(balance);
     if (!name.trim()) return setError("Give the account a name.");
     if (b === null) return setError("Balance should be a dollar amount.");
-    onSave({ ...account, name: name.trim(), tier, balanceCents: b });
+    onSave({ ...account, name: name.trim(), tier, balanceCents: b, purpose: tier === "reserve" && !isTax && purpose ? purpose : undefined });
   }
 
   return (
@@ -551,6 +574,22 @@ export function AccountForm({ account, onSave, onDelete, onCancel }: Done & { ac
           ))}
         </div>
       </div>
+      {tier === "reserve" &&
+        (isTax ? (
+          <p className="rounded-xl bg-sun-soft px-3 py-2 text-sm">This is your tax savings (set in tax settings). It pays estimated tax and isn&apos;t counted as spendable cash.</p>
+        ) : (
+          <div className="space-y-2">
+            <div className="text-sm font-bold">Used for</div>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {PURPOSE_OPTIONS.map((o) => (
+                <label key={o.value || "general"} className={`flex cursor-pointer gap-2 rounded-xl p-2.5 ring-1 ${purpose === o.value ? "bg-accent-soft ring-accent" : "ring-line hover:bg-[#faf6ef]"}`}>
+                  <input type="radio" name="purpose" className="mt-0.5 accent-[var(--accent)]" checked={purpose === o.value} onChange={() => setPurpose(o.value)} />
+                  <span><span className="block text-sm font-bold">{o.label}</span><span className="block text-xs text-muted">{o.help}</span></span>
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
       <Field label="Balance (demo)" hint="In the real app this comes from your bank and can't be edited. Change it here to see how the forecast reacts.">
         {(id) => <MoneyInput id={id} value={balance} onChange={setBalance} />}
       </Field>

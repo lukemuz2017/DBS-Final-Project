@@ -18,7 +18,8 @@ import {
 } from "@/components/sections";
 import { StatusBadge } from "@/components/ui";
 import { useDemoProfile } from "@/lib/demo/useDemoProfile";
-import { forecast, type Forecast } from "@/lib/engine/forecast";
+import type { Forecast } from "@/lib/engine/forecast";
+import { forecastWithPlan } from "@/lib/engine/plan";
 import { fmtRange, usd } from "@/lib/format";
 import type { Profile } from "@/lib/types";
 import { hasStaleAccount } from "@/lib/format";
@@ -28,9 +29,10 @@ import { hasStaleAccount } from "@/lib/format";
 
 export function DashboardView({ base, profiles }: { base: Profile; profiles: Profile[] }) {
   const { profile: p, update, reset, edited } = useDemoProfile(base);
-  const f = useMemo(() => forecast(p), [p]);
+  // Everything on the dashboard assumes the Payday Plan is followed (a note says so).
+  const f = useMemo(() => forecastWithPlan(p), [p]);
   // Same forecast with savings counted in; transfers between the two cancel out.
-  const fCash = useMemo(() => forecast(p, { scope: "cash" }), [p]);
+  const fCash = useMemo(() => forecastWithPlan(p, { scope: "cash" }), [p]);
   const { edit, drawerNode } = useEditor(p, update);
   const [view, setView] = useState<"forecast" | "goals">("forecast");
   const [week, setWeek] = useState<number | null>(null);
@@ -144,6 +146,7 @@ export function DashboardView({ base, profiles }: { base: Profile; profiles: Pro
                     <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2.5 w-4 rounded-sm bg-accent/15" /> <InfoTip term="range">Low to high range</InfoTip></span>
                     {fv.weeks.some((w) => w.status === "short") && <span className="inline-flex items-center gap-1.5"><span className="inline-block size-2.5 rounded-full bg-warn" /> Week that needs a move</span>}
                     {fv.weeks.some((w) => w.status === "shortfall") && <span className="inline-flex items-center gap-1.5"><span className="inline-block size-2.5 rounded-full bg-warn" /> Week that&apos;s short even with savings</span>}
+                    {fv.followsPlan && <span className="ml-auto"><InfoTip term="paydayAssumed">Assumes you follow the Payday Plan</InfoTip></span>}
                   </div>
                 </>
               ) : (
@@ -166,7 +169,7 @@ export function DashboardView({ base, profiles }: { base: Profile; profiles: Pro
                       ))}
                     </tbody>
                   </table>
-                  <p className="mt-2 text-xs text-muted">Balances are the lowest point in each week, except &ldquo;Ends week at&rdquo;. Click a row for that week&apos;s details.</p>
+                  <p className="mt-2 text-xs text-muted">Balances are the lowest point in each week, except &ldquo;Ends week at&rdquo;. Click a row for that week&apos;s details.{fv.followsPlan && <> <InfoTip term="paydayAssumed">Assumes you follow the Payday Plan.</InfoTip></>}</p>
                 </div>
               )}
             </div>

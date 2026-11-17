@@ -10,7 +10,7 @@ export default function Home() {
         <p className="text-xs font-extrabold uppercase tracking-[0.12em] text-accent">Runway · Demo</p>
         <h1 className="mt-2 font-display text-5xl font-bold leading-[1.05] tracking-tight">See the next 12 weeks before they happen.</h1>
         <p className="mt-4 text-lg">A cash forecast for people whose income is lumpy. Pick a demo person to explore:</p>
-        <ul className="mt-6 grid gap-3 sm:grid-cols-3">
+        <ul className="mt-6 grid gap-3 sm:grid-cols-2">
           {DEMO_PROFILES.map((p) => (
             <li key={p.slug}>
               <Link href={`/dashboard/${p.slug}`} className="card block p-4 transition-transform hover:-translate-y-0.5">

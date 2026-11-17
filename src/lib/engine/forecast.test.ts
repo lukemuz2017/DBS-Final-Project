@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { DEMO_PROFILES } from "../demo";
+import { ALL_DEMO_PROFILES as DEMO_PROFILES } from "../demo";
 import type { Profile } from "../types";
-import { forecast } from "./forecast";
+import { coverOrder, forecast } from "./forecast";
+import { forecastWithPlan, windfallSplits } from "./plan";
 
 // A tiny profile with numbers small enough to check by hand.
 function simpleProfile(overrides: Partial<Profile> = {}): Profile {
@@ -154,8 +155,46 @@ describe("forecast engine", () => {
     // Runway counts checking + the emergency fund, never tax savings.
     expect(f.taxEarmarkToday).toBe(500_000);
     expect(f.runway.liquid).toBe(100_000 + 200_000);
-    // Checking + savings view: the whole tax leaves cash, so nothing is earmarked there.
-    expect(forecast(p, { scope: "cash" }).events.find((e) => e.kind === "tax")!.earmarkedCents).toBeUndefined();
+    // Checking + savings never counts tax savings: it starts at checking + the emergency fund
+    // ($3,000), and only the $1,000 of tax beyond tax savings leaves it. 3,000 - 1,500 - 1,000.
+    const cash = forecast(p, { scope: "cash" });
+    expect(cash.startBalance).toBe(300_000);
+    expect(cash.weeks[0].base).toBe(50_000);
+  });
+
+  it("sets tax aside from each untaxed payment the day it lands, and pays the bill from it", () => {
+    // Tax savings starts empty. A $1,000 untaxed payment on Nov 16; 30% is due Nov 30.
+    const p = simpleProfile({
+      accounts: [
+        { id: "chk", institution: "Bank", name: "Checking", mask: "0001", type: "checking", tier: "operating", balanceCents: 100_000, balanceAsOf: "2026-11-13T00:00:00Z" },
+        { id: "tax", institution: "Bank", name: "Tax savings", mask: "0002", type: "savings", tier: "reserve", balanceCents: 0, balanceAsOf: "2026-11-13T00:00:00Z" },
+      ],
+      incomeStreams: [{ id: "c", name: "Client", kind: "freelance_client", cadence: "irregular", confidence: "certain", amountSpreadCents: 0, taxWithheld: false, payments: [{ expectedDate: "2026-11-16", amountCents: 100_000 }], summary: "" }],
+      tax: { setAsidePct: 30, receivedThisPeriodCents: 0, periodLabel: "", periodEnd: "2026-12-31", dueDate: "2026-11-30", reserveAccountId: "tax", note: "" },
+    });
+    const f = forecast(p);
+    const setAside = f.events.find((e) => e.fromPlan)!;
+    expect(setAside).toMatchObject({ kind: "transfer", toAccountId: "tax", date: { base: "2026-11-16" } });
+    expect(setAside.amount.base).toBe(-30_000);
+    // The $300 bill is paid entirely from what was set aside, so checking ends at 1,000 + 1,000 - 300.
+    expect(f.events.find((e) => e.kind === "tax")!.earmarkedCents).toBe(30_000);
+    expect(f.weeks[11].endBase).toBe(170_000);
+    expect(f.tax).toMatchObject({ amount: 30_000, setAside: 0, plannedSetAside: 30_000, covered: true });
+    expect(f.followsPlan).toBe(true);
+  });
+
+  it("draws on the emergency fund first and goal savings last", () => {
+    const p = simpleProfile({
+      accounts: [
+        { id: "chk", institution: "Bank", name: "Checking", mask: "0001", type: "checking", tier: "operating", balanceCents: 0, balanceAsOf: "2026-11-13T00:00:00Z" },
+        { id: "goals", institution: "Bank", name: "Goals", mask: "0002", type: "savings", tier: "reserve", purpose: "goals", balanceCents: 900_000, balanceAsOf: "2026-11-13T00:00:00Z" },
+        { id: "emg", institution: "Bank", name: "Emergency", mask: "0003", type: "savings", tier: "reserve", purpose: "emergency", balanceCents: 100_000, balanceAsOf: "2026-11-13T00:00:00Z" },
+      ],
+      plannedEvents: [{ id: "x", name: "Repair", kind: "other", amountCents: -150_000, dueDate: "2026-11-18" }],
+    });
+    expect(coverOrder(p).map((a) => a.id)).toEqual(["emg", "goals"]);
+    // $1,700 needed ($1,500 + $200 margin): all $1,000 of the emergency fund, then $700 from goals.
+    expect(forecast(p).windows[0].fix?.legs?.map((l) => [l.accountId, l.amount])).toEqual([["emg", 100_000], ["goals", 70_000]]);
   });
 
   it("widens the range further out (spending uncertainty grows with time)", () => {
@@ -165,9 +204,15 @@ describe("forecast engine", () => {
   });
 
   it("produces the intended demo stories", () => {
-    const statuses = (slug: string) => forecast(DEMO_PROFILES.find((p) => p.slug === slug)!).windows.map((w) => w.status);
+    const demo = (slug: string) => DEMO_PROFILES.find((p) => p.slug === slug)!;
+    const statuses = (slug: string) => forecastWithPlan(demo(slug)).windows.map((w) => w.status);
+    // Sam: steady. Priya: January needs a move from savings. Jordan: a tight end of January,
+    // and the Payday Plan funds the buffer, retirement and the camera goal before then.
     expect(statuses("steady").every((s) => s === "ok")).toBe(true);
     expect(statuses("student")).toContain("short");
-    expect(statuses("freelance")).toContain("short");
+    expect(statuses("freelance")).toContain("tight");
+    expect(statuses("freelance")).not.toContain("short");
+    const kinds = new Set(windfallSplits(demo("freelance")).flatMap((w) => w.legs.map((l) => l.kind)));
+    for (const k of ["tax", "buffer", "retirement", "goals"]) expect(kinds).toContain(k);
   });
 });

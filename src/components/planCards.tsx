@@ -1,83 +1,26 @@
 "use client";
 
-import { refundPlan, retirementPlan, windfallSplits } from "@/lib/engine/plan";
-import { fmtDate, toDate, usd } from "@/lib/format";
+import { refundPlan, retirementOutlook } from "@/lib/engine/plan";
+import { fmtDate, usd } from "@/lib/format";
 import type { Profile } from "@/lib/types";
 import { InfoTip } from "./InfoTip";
-import { Card, Meter } from "./ui";
+import { RetirementPanel } from "./retirementOutlook";
+import { Card } from "./ui";
 
 // Cards for lumpy income: retirement room, and a student's refund plan with the
 // borrowed-money check. (Pay yourself and payment splits live in freelanceSection.tsx.)
 
-const fmtMonthYear = (iso: string) => {
-  const d = toDate(iso);
-  return `${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getUTCMonth()]} ${d.getUTCDate()}, ${d.getUTCFullYear()}`;
-};
 
 // ---------------------------------------------------------------------------
 // Retirement (freelance: SEP / Solo 401(k); steady: employer 401(k) match)
 
 export function RetirementCard({ p }: { p: Profile }) {
-  const r = retirementPlan(p);
-  if (r.kind === "none") return null;
-
-  if (r.kind === "self_employed") {
-    const plan = p.retirement!.plan === "sep_ira" ? "SEP IRA" : "Solo 401(k)";
-    const limit = p.retirement!.plan === "sep_ira" ? r.sepLimitCents : r.soloLimitCents;
-    const fromPayments = windfallSplits(p).reduce((s, w) => s + (w.legs.find((l) => l.kind === "retirement")?.amountCents ?? 0), 0);
-    return (
-      <section className="card grid gap-6 p-5 lg:grid-cols-2">
-        <div>
-        <div className="flex items-baseline justify-between gap-2">
-          <span className="text-sm text-muted">{plan}, put in so far in 2026</span>
-          <span className="tabular font-extrabold">{usd(r.ytdCents)} <span className="text-sm font-bold text-muted">of about {usd(limit)}</span></span>
-        </div>
-        <div className="mt-2"><Meter value={r.ytdCents} max={Math.max(1, limit)} label="Retirement contributions this year" /></div>
-        <dl className="mt-3 grid grid-cols-2 gap-2 text-sm">
-          <div className="rounded-xl bg-[#f6f1e9] px-3 py-2"><dt className="text-[11px] font-bold text-accent-strong">Room left for 2026</dt><dd className="tabular font-extrabold">{usd(r.roomCents)}</dd></div>
-          <div className="rounded-xl bg-[#f6f1e9] px-3 py-2"><dt className="text-[11px] font-bold text-accent-strong">From your next payments</dt><dd className="tabular font-extrabold">{usd(fromPayments)}</dd></div>
-        </dl>
-        </div>
-        <div>
-        <ul className="space-y-2 text-sm">
-          <li><strong>Lowers your tax bill:</strong> every $1,000 in cuts this year&apos;s taxes by roughly {usd(r.taxSavedPer1000Cents)} at your {p.tax?.setAsidePct ?? 25}% set-aside rate.</li>
-          <li><strong>Lumpy-income friendly:</strong> contributions for 2026 can go in any time until your filing deadline ({fmtMonthYear(r.deadline!)}, later with an extension), so put money in after good months.</li>
-          {p.retirement!.plan === "sep_ira" && r.soloLimitCents > r.sepLimitCents && (
-            <li className="text-muted">A <InfoTip term="soloVsSep">Solo 401(k)</InfoTip> would allow up to about {usd(r.soloLimitCents)} at your income, worth comparing if you want to save more.</li>
-          )}
-        </ul>
-        <p className="mt-3 text-[11px] text-muted">Estimates for planning, not tax advice. Limits are 2026 IRS figures.</p>
-        </div>
-      </section>
-    );
-  }
-
-  // Employer plan
+  const o = retirementOutlook(p);
+  if (!o || !p.retirement) return null;
+  const planName = { sep_ira: "SEP IRA", solo_401k: "Solo 401(k)", employer_401k: "Workplace 401(k)", none: "" }[p.retirement.plan];
   return (
-    <section className="card grid gap-6 p-5 lg:grid-cols-2">
-      <div>
-      <div className="text-xs font-bold text-accent-strong">Your workplace 401(k)</div>
-      <div className="mt-2 flex items-baseline justify-between gap-2 text-sm">
-        <span className="text-muted">You contribute</span>
-        <span className="font-extrabold">{r.contributionPct}% of pay</span>
-      </div>
-      <div className="flex items-baseline justify-between gap-2 text-sm">
-        <span className="text-muted">Employer matches up to</span>
-        <span className="font-extrabold">{r.matchUpToPct}% of pay</span>
-      </div>
-      </div>
-      <div>
-      {r.raiseToPct ? (
-        <div className="rounded-xl bg-sun-soft p-3 ring-1 ring-sun">
-          <div className="text-[11px] font-extrabold uppercase tracking-wider text-tight">Suggestion</div>
-          <p className="mt-1 font-semibold">Raise to {r.raiseToPct}% to get the full match: about <span className="text-accent-strong">{usd(r.matchGainedPerYearCents!)} a year</span> in free money.</p>
-          <p className="mt-1 text-xs text-muted">Costs about {usd(r.costPerPaycheckCents!)} less take-home per paycheck, since contributions come out before tax.</p>
-        </div>
-      ) : (
-        <p className="rounded-xl bg-accent-soft px-3 py-2 text-sm ring-1 ring-accent/20">You&apos;re getting the full match. Common next step: add 1% a year until you reach 10–15%.</p>
-      )}
-      <p className="mt-3 text-[11px] text-muted">Estimates for planning, not tax or investment advice.</p>
-      </div>
+    <section className="card p-5">
+      <RetirementPanel o={o} planName={planName} />
     </section>
   );
 }

@@ -90,6 +90,7 @@ export function useEditor(p: Profile, update: (fn: (p: Profile) => Profile) => v
           key={editing.id ?? "new"}
           goal={g}
           today={p.today}
+          accounts={p.accounts.filter((a) => a.tier === "reserve" && a.id !== p.tax?.reserveAccountId)}
           onCancel={close}
           onSave={(ng) => save((q) => ({ ...q, goals: upsert(q.goals, ng) }))}
           onDelete={g ? () => save((q) => ({ ...q, goals: q.goals.filter((x) => x.id !== g.id) })) : undefined}
@@ -105,6 +106,7 @@ export function useEditor(p: Profile, update: (fn: (p: Profile) => Profile) => v
           <AccountForm
             key={a.id}
             account={a}
+            isTax={a.id === p.tax?.reserveAccountId}
             onCancel={close}
             onSave={(na) => save((q) => ({ ...q, accounts: upsert(q.accounts, na) }))}
             onDelete={() =>
@@ -113,6 +115,7 @@ export function useEditor(p: Profile, update: (fn: (p: Profile) => Profile) => v
                 accounts: q.accounts.filter((x) => x.id !== a.id),
                 // Keep references consistent: transfers into this account stop, tax setup forgets it.
                 recurringBills: q.recurringBills.filter((b) => b.toAccountId !== a.id),
+                goals: q.goals.map((g) => (g.accountId === a.id ? { ...g, accountId: undefined } : g)),
                 tax: q.tax && q.tax.reserveAccountId === a.id ? { ...q.tax, reserveAccountId: undefined } : q.tax,
               }))
             }

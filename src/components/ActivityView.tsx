@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { Check, PlusIcon, Segmented, SmallButton } from "@/components/edit/fields";
 import { InfoTip } from "@/components/InfoTip";
-import { forecast, HORIZON_WEEKS, upcoming, type CashEvent } from "@/lib/engine/forecast";
+import { HORIZON_WEEKS, upcoming, type CashEvent } from "@/lib/engine/forecast";
+import { forecastWithPlan } from "@/lib/engine/plan";
 import { addDays, fmtDate, fmtDay, toDate, usd } from "@/lib/format";
 import type { Profile } from "@/lib/types";
 import { Card } from "./ui";
@@ -70,14 +71,14 @@ export function ActivityList({ p, mode, onEditItem, onAdd }: {
           muted: t.isInternalTransfer,
         }));
     }
-    return upcoming(forecast(p), HORIZON_WEEKS * 7)
+    return upcoming(forecastWithPlan(p), HORIZON_WEEKS * 7)
       .filter((e) => !(hideTransfers && e.kind === "transfer"))
       .map((e) => ({
         id: e.id,
         date: e.date.base,
         label: e.label,
         amount: e.amount.base,
-        note: e.kind === "income" && e.date.low !== e.date.base ? `Income · could slip to ${fmtDate(e.date.low)} in the low case` : NOTE[e.kind],
+        note: e.kind === "income" && e.date.low !== e.date.base ? `Income · could slip to ${fmtDate(e.date.low)} in the low case` : e.fromPlan ? "Payday Plan move, if you follow it" : NOTE[e.kind],
         muted: e.kind === "transfer",
         event: e,
       }));

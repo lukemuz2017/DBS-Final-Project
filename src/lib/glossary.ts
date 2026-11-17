@@ -54,6 +54,14 @@ export const GLOSSARY = {
     title: "Payday Plan",
     body: "A plan for each upcoming client payment. Tax set-aside comes first, because no one withholds it for you. Then: what the next weeks need, a buffer top-up if your runway is below target, retirement (if the expected case can afford it), and whatever the low case says is truly yours to spend.",
   },
+  paydayAssumed: {
+    title: "Assumes the Payday Plan",
+    body: "These numbers assume you follow the Payday Plan: tax set aside from each client payment the day it lands, plus the suggested buffer, retirement and goal moves. Runway never moves money; if you skip a step, checking will run higher than shown and your savings lower.",
+  },
+  retirementOutlook: {
+    title: "Long-term outlook",
+    body: "Where saving at today's rate leads, in today's dollars. Returns after inflation: 3% a year in the low case, 5% expected, 7% high. “Need” assumes you'll want about 80% of today's income each year, Social Security covers about 40% from 67, and savings can pay out about 4% a year (so 25x the gap). Retiring before 67 means savings also cover the years until Social Security starts. Rough rules of thumb for planning, not investment advice.",
+  },
   retirementSelf: {
     title: "Retirement without an employer",
     body: "Freelancers can open their own plan. A SEP IRA lets you put in about 20% of net self-employment profit (up to $72,000 in 2026). A Solo 401(k) adds up to $24,500 on top, which helps at lower incomes. Both lower this year's taxes.",

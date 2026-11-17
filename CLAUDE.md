@@ -15,7 +15,7 @@ Next.js 16 (App Router, TypeScript, Tailwind v4) on Vercel · Supabase (Postgres
 
 @docs/design-decisions.md
 
-**Current phase: dummy data only.** No bank connections yet; don't add Plaid or Teller code unless the user asks. Three demo personas live in code at `src/lib/demo/`: Priya (Booth MBA student, Chicago), Jordan (freelance photographer, Brooklyn) and Sam (gig worker turned salaried, LA). Their shapes in `src/lib/types.ts` mirror the data model, so a `fixture` provider can later seed them into Supabase without changing the engine or UI. Keep their numbers realistic for their city and situation. Focus is UI/UX and the forecast engine.
+**Current phase: dummy data only.** No bank connections yet; don't add Plaid or Teller code unless the user asks. Demo personas live in code at `src/lib/demo/`: Jordan (freelance photographer, Brooklyn) and Sam (gig worker turned salaried, LA). Priya (Booth MBA student, Chicago) is parked behind `FEATURES.students` in `src/lib/features.ts`: hidden in the app, still covered by tests via `ALL_DEMO_PROFILES`. Their shapes in `src/lib/types.ts` mirror the data model, so a `fixture` provider can later seed them into Supabase without changing the engine or UI. Keep their numbers realistic for their city and situation. Focus is UI/UX and the forecast engine.
 
 **Look and feel:** the proposal page's palette is the baseline (warm paper background, faded green accent, yellow "sun" glow; Fraunces headings, Nunito Sans body). Tokens are in `src/app/globals.css`.
 

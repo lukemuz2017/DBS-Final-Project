@@ -2,6 +2,7 @@
 
 import type { Forecast, Status, WeekResult } from "@/lib/engine/forecast";
 import { goalPace, type GoalPace } from "@/lib/engine/goals";
+import { fundedGoals, goalFunding, type GoalFunding } from "@/lib/engine/plan";
 import { daysBetween, fmtDate, fmtDay, fmtRange, toDate, usd } from "@/lib/format";
 import type { Profile } from "@/lib/types";
 import { PencilIcon, PlusIcon, SmallButton } from "./edit/fields";
@@ -68,7 +69,8 @@ const KIND_TAG = { income: "Income", bill: "Bill", transfer: "To savings", plann
 export function WeekDetail({ f, week, onClose, backLabel = "Close" }: { f: Forecast; week: WeekResult; onClose: () => void; backLabel?: string }) {
   const items = f.events
     .filter((e) => e.included.base && e.date.base >= week.start && e.date.base <= week.end)
-    .filter((e) => !(f.scope === "cash" && e.toReserve))
+    // Checking + savings: moves between counted accounts cancel out (tax savings isn't counted, so set-asides stay).
+    .filter((e) => !(f.scope === "cash" && e.toReserve && e.sourceId !== "tax"))
     .sort((a, b) => (a.date.base < b.date.base ? -1 : 1));
   // Income that could land this week only in the low case (it slipped in from earlier).
   const slipping = f.events.filter((e) => e.kind === "income" && e.included.low && e.date.base < week.start && e.date.low >= week.start && e.date.low <= week.end);
@@ -122,7 +124,11 @@ export function WeekDetail({ f, week, onClose, backLabel = "Close" }: { f: Forec
                   <span className="min-w-0">
                     <span className="inline-block w-24 text-muted">{fmtDay(e.date.base)}</span>
                     <span className={e.kind === "transfer" ? "text-muted" : "font-bold"}>{e.label}</span>
-                    <span className="ml-1.5 text-[11px] text-muted">{KIND_TAG[e.kind]}</span>
+                    {e.fromPlan ? (
+                      <span className="ml-1.5 text-[11px]"><InfoTip term="paydayAssumed">Payday Plan</InfoTip></span>
+                    ) : (
+                      <span className="ml-1.5 text-[11px] text-muted">{KIND_TAG[e.kind]}</span>
+                    )}
                     {e.earmarkedCents ? <span className="block pl-24 text-[11px] text-muted">{usd(e.earmarkedCents)} from tax savings · {usd(-hit(e))} from checking</span> : null}
                   </span>
                   <span className={`tabular shrink-0 font-bold ${e.amount.base > 0 ? "text-accent-strong" : e.kind === "transfer" ? "text-muted" : ""}`}>{usd(e.amount.base, { sign: true })}</span>
@@ -172,9 +178,12 @@ const VERDICT: Record<GoalPace["status"], { label: string; tone: "accent" | "tig
 };
 
 export function GoalsPanel({ p, onEdit }: { p: Profile; onEdit?: (id?: string) => void }) {
-  const paces = p.goals.map((g) => goalPace(g, p.today)).sort((a, b) => (a.goal.targetDate < b.goal.targetDate ? -1 : 1));
+  // Linked goals take their saved and monthly amounts from the money that actually feeds them.
+  const goals = fundedGoals(p);
+  const funding = goalFunding(p);
+  const paces = goals.map((g) => goalPace(g, p.today)).sort((a, b) => (a.goal.targetDate < b.goal.targetDate ? -1 : 1));
   const onTrack = paces.filter((x) => x.status === "on_track" || x.status === "reached").length;
-  const monthly = p.goals.reduce((s, g) => s + g.monthlyContributionCents, 0);
+  const monthly = goals.reduce((s, g) => s + g.monthlyContributionCents, 0);
   const extraNeeded = paces.reduce((s, x) => s + (x.status === "late" || x.status === "not_started" ? Math.max(0, x.neededMonthlyCents - x.goal.monthlyContributionCents) : 0), 0);
 
   return (
@@ -192,32 +201,36 @@ export function GoalsPanel({ p, onEdit }: { p: Profile; onEdit?: (id?: string) =
 
       <ul className="grid gap-3 md:grid-cols-2">
         {paces.map((x) => (
-          <GoalRow key={x.goal.id} x={x} today={p.today} onEdit={onEdit} />
+          <GoalRow key={x.goal.id} x={x} today={p.today} onEdit={onEdit} source={funding.get(x.goal.id)!.source} account={p.accounts.find((a) => a.id === x.goal.accountId)} />
         ))}
       </ul>
-      <p className="text-xs text-muted">Pace = saved so far plus your planned monthly amount. It doesn&apos;t yet use the 12-week forecast to check that the monthly amount is affordable.</p>
+      <p className="text-xs text-muted">Goals linked to a savings account use its balance and what actually flows in: Payday Plan moves or a recurring transfer. Other goals use the amounts you entered.</p>
     </div>
   );
 }
 
-function GoalRow({ x, today, onEdit }: { x: GoalPace; today: string; onEdit?: (id?: string) => void }) {
+const SOURCE: Record<GoalFunding["source"], string> = { payday: "from your Payday Plan", transfer: "by recurring transfer", you: "as you entered", none: "" };
+
+function GoalRow({ x, today, onEdit, source, account }: { x: GoalPace; today: string; onEdit?: (id?: string) => void; source: GoalFunding["source"]; account?: Profile["accounts"][number] }) {
   const g = x.goal;
   const v = VERDICT[x.status];
   const verdict =
     x.status === "reached"
       ? "Done. You've saved the full amount."
       : x.status === "not_started"
-        ? `Nothing going in yet. ${usd(x.neededMonthlyCents)}/mo would get you there by ${fmtMonth(g.targetDate)}.`
+        ? source === "none" && account
+          ? `Nothing going in yet: the Payday Plan funds it once checking can spare the money. ${usd(x.neededMonthlyCents)}/mo would get you there by ${fmtMonth(g.targetDate)}.`
+          : `Nothing going in yet. ${usd(x.neededMonthlyCents)}/mo would get you there by ${fmtMonth(g.targetDate)}.`
         : x.status === "on_track"
-          ? `At ${usd(g.monthlyContributionCents)}/mo you'll get there around ${fmtMonth(x.reachDate!)}${x.monthsLate! < 0 ? `, ${duration(-x.monthsLate!)} early` : ""}.`
-          : `At ${usd(g.monthlyContributionCents)}/mo you'd get there around ${fmtMonth(x.reachDate!)}, ${duration(x.monthsLate!)} late. ${usd(x.neededMonthlyCents)}/mo would make ${fmtMonth(g.targetDate)}.`;
+          ? `At ${usd(g.monthlyContributionCents)}/mo ${SOURCE[source]} you'll get there around ${fmtMonth(x.reachDate!)}${x.monthsLate! < 0 ? `, ${duration(-x.monthsLate!)} early` : ""}.`
+          : `At ${usd(g.monthlyContributionCents)}/mo ${SOURCE[source]} you'd get there around ${fmtMonth(x.reachDate!)}, ${duration(x.monthsLate!)} late. ${usd(x.neededMonthlyCents)}/mo would make ${fmtMonth(g.targetDate)}.`;
 
   return (
     <li className="rounded-2xl border border-line bg-surface p-4">
       <div className="flex items-start justify-between gap-2">
         <div>
           <div className="font-bold">{g.name}</div>
-          <div className="tabular text-xs text-muted">{usd(g.savedCents)} of {usd(g.targetCents)} · target {fmtMonth(g.targetDate)}</div>
+          <div className="tabular text-xs text-muted">{usd(g.savedCents)} of {usd(g.targetCents)} · target {fmtMonth(g.targetDate)}{account ? ` · ${account.institution} ${account.name}` : ""}</div>
         </div>
         <span className="flex shrink-0 items-center gap-1">
           <InfoTip term={x.status === "late" ? "behindPace" : "onPace"} underline={false}><Chip tone={v.tone}>{v.label}</Chip></InfoTip>

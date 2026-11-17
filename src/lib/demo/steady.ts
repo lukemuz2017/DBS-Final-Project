@@ -23,7 +23,7 @@ export const steady: Profile = {
 
   accounts: [
     { id: "o-chk", institution: "Wells Fargo", name: "Everyday Checking", mask: "6403", type: "checking", tier: "operating", balanceCents: 390_000, balanceAsOf: "2026-11-13T07:45:00Z" },
-    { id: "o-sav", institution: "SoFi", name: "Savings", mask: "2118", type: "savings", tier: "reserve", balanceCents: 680_000, balanceAsOf: "2026-11-13T06:10:00Z" },
+    { id: "o-sav", institution: "SoFi", name: "Savings", mask: "2118", type: "savings", tier: "reserve", purpose: "emergency", balanceCents: 680_000, balanceAsOf: "2026-11-13T06:10:00Z" },
     { id: "o-401k", institution: "Fidelity", name: "401(k)", mask: "9921", type: "investment", tier: "long_term", balanceCents: 290_000, balanceAsOf: "2026-11-12T22:00:00Z" },
     { id: "o-auto", institution: "Honda Financial", name: "Auto loan", mask: "7731", type: "loan", tier: "excluded", balanceCents: -1_480_000, balanceAsOf: "2026-11-12T22:00:00Z" },
     { id: "o-stl", institution: "Nelnet", name: "Federal student loans", mask: "0458", type: "loan", tier: "excluded", balanceCents: -2_260_000, balanceAsOf: "2026-11-12T22:00:00Z" },
@@ -83,7 +83,7 @@ export const steady: Profile = {
   spending: { weeklyMeanCents: 12_000, weeklySdCents: 5_000 },
 
   goals: [
-    { id: "o-g1", name: "Emergency fund: 4 months of costs", kind: "emergency_fund", targetCents: 1_800_000, targetDate: "2027-09-30", savedCents: 680_000, monthlyContributionCents: 43_300 },
+    { id: "o-g1", name: "Emergency fund: 4 months of costs", kind: "emergency_fund", targetCents: 1_800_000, targetDate: "2027-09-30", savedCents: 680_000, monthlyContributionCents: 0, accountId: "o-sav" },
     { id: "o-g2", name: "Pay off the Capital One card", kind: "debt_payoff", targetCents: 520_000, targetDate: "2027-05-31", savedCents: 180_000, monthlyContributionCents: 25_000 },
     { id: "o-g3", name: "Condo down payment", kind: "home_down_payment", targetCents: 4_000_000, targetDate: "2030-12-31", savedCents: 0, monthlyContributionCents: 0 },
   ],
@@ -91,12 +91,19 @@ export const steady: Profile = {
   retirement: {
     plan: "employer_401k",
     accountId: "o-401k",
-    ytdContributedCents: 105_000, // 3% since starting in July
+    ytdContributedCents: 81_000, // 3% of nine paychecks since starting in July
     salaryCents: 7_800_000,
     contributionPct: 3,
     matchRatePct: 50,
     matchUpToPct: 6,
+    retirementAge: 67,
+    // 3% of each $3,000 gross paycheck, plus the employer's 50% match.
+    contributions: ["2026-07-17", "2026-07-31", "2026-08-14", "2026-08-28", "2026-09-11", "2026-09-25", "2026-10-09", "2026-10-23", "2026-11-06"].flatMap((date) => [
+      { date, amountCents: 9_000, source: "you" as const },
+      { date, amountCents: 4_500, source: "employer" as const },
+    ]),
   },
+  birthYear: 1998,
 
   history: [
     { label: "Gig work: delivery driving + freelance editing", date: "2023-06-01" },

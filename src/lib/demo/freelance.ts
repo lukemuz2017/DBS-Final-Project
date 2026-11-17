@@ -22,9 +22,10 @@ export const freelance: Profile = {
   rangeConfidence: 80,
 
   accounts: [
-    { id: "f-chk", institution: "Chase", name: "Total Checking", mask: "2290", type: "checking", tier: "operating", balanceCents: 760_000, balanceAsOf: "2026-11-13T08:02:00Z" },
+    { id: "f-chk", institution: "Chase", name: "Total Checking", mask: "2290", type: "checking", tier: "operating", balanceCents: 1_460_000, balanceAsOf: "2026-11-13T08:02:00Z" },
     { id: "f-tax", institution: "Marcus", name: "Tax savings", mask: "5512", type: "savings", tier: "reserve", balanceCents: 480_000, balanceAsOf: "2026-11-13T05:30:00Z" },
-    { id: "f-emg", institution: "Ally", name: "Emergency fund", mask: "8834", type: "savings", tier: "reserve", balanceCents: 320_000, balanceAsOf: "2026-11-09T05:30:00Z" },
+    { id: "f-emg", institution: "Ally", name: "Emergency fund", mask: "8834", type: "savings", tier: "reserve", purpose: "emergency", balanceCents: 320_000, balanceAsOf: "2026-11-09T05:30:00Z" },
+    { id: "f-goals", institution: "Ally", name: "Goals savings", mask: "8851", type: "savings", tier: "reserve", purpose: "goals", balanceCents: 0, balanceAsOf: "2026-11-09T05:30:00Z" },
     { id: "f-sep", institution: "Fidelity", name: "SEP IRA", mask: "7140", type: "investment", tier: "long_term", balanceCents: 1_460_000, balanceAsOf: "2026-11-12T22:00:00Z" },
     { id: "f-bh", institution: "B&H Payboo", name: "Gear financing", mask: "6620", type: "loan", tier: "excluded", balanceCents: -189_000, balanceAsOf: "2026-11-12T22:00:00Z" },
     { id: "f-card", institution: "Amex", name: "Blue Business Cash", mask: "1007", type: "credit_card", tier: "excluded", balanceCents: -88_000, balanceAsOf: "2026-11-13T08:02:00Z" },
@@ -152,8 +153,8 @@ export const freelance: Profile = {
   },
 
   goals: [
-    { id: "f-g1", name: "Emergency fund: 4 months of costs", kind: "emergency_fund", targetCents: 1_800_000, targetDate: "2027-10-31", savedCents: 320_000, monthlyContributionCents: 80_000 },
-    { id: "f-g2", name: "Replace the Z6 II body", kind: "other", targetCents: 250_000, targetDate: "2027-04-30", savedCents: 0, monthlyContributionCents: 0 },
+    { id: "f-g1", name: "Emergency fund: 4 months of costs", kind: "emergency_fund", targetCents: 1_800_000, targetDate: "2027-10-31", savedCents: 320_000, monthlyContributionCents: 0, accountId: "f-emg" },
+    { id: "f-g2", name: "Replace the Z6 II body", kind: "other", targetCents: 250_000, targetDate: "2027-04-30", savedCents: 0, monthlyContributionCents: 0, accountId: "f-goals" },
   ],
 
   retirement: {
@@ -162,7 +163,28 @@ export const freelance: Profile = {
     ytdContributedCents: 300_000,
     estNetProfitCents: 6_800_000, // about $68k net profit for 2026
     windfallPct: 10,
+    retirementAge: 67,
+    // 10% of each after-tax client payment, moved a day or so after it lands. $3,000 so far in 2026.
+    contributions: [
+      { date: "2026-01-13", amountCents: 24_500, source: "you" },
+      { date: "2026-02-10", amountCents: 10_000, source: "you" },
+      { date: "2026-03-20", amountCents: 15_000, source: "you" },
+      { date: "2026-04-28", amountCents: 12_000, source: "you" },
+      { date: "2026-05-26", amountCents: 21_000, source: "you" },
+      { date: "2026-06-16", amountCents: 24_000, source: "you" },
+      { date: "2026-06-30", amountCents: 23_000, source: "you" },
+      { date: "2026-07-14", amountCents: 25_000, source: "you" },
+      { date: "2026-07-28", amountCents: 22_000, source: "you" },
+      { date: "2026-08-11", amountCents: 23_000, source: "you" },
+      { date: "2026-08-25", amountCents: 25_000, source: "you" },
+      { date: "2026-09-22", amountCents: 21_500, source: "you" },
+      { date: "2026-10-07", amountCents: 19_500, source: "you" },
+      { date: "2026-10-20", amountCents: 12_500, source: "you" },
+      { date: "2026-10-28", amountCents: 18_000, source: "you" },
+      { date: "2026-11-10", amountCents: 4_000, source: "you" },
+    ],
   },
+  birthYear: 1992,
 
   history: [
     { label: "Went full-time freelance", date: "2023-03-01" },
@@ -192,6 +214,9 @@ export const freelance: Profile = {
       ...monthly({ accountId: "f-chk", amountCents: -8_100, merchant: "Con Edison", category: "Utilities" }, 16, ["2026-09", "2026-10"]),
       { accountId: "f-chk", postedDate: "2026-10-22", amountCents: -112_000, merchant: "Amex payment", category: "Card payment", isInternalTransfer: true },
       { accountId: "f-chk", postedDate: "2026-09-22", amountCents: -96_000, merchant: "Amex payment", category: "Card payment", isInternalTransfer: true },
+      ...([["2026-09-22", 21_500], ["2026-10-07", 19_500], ["2026-10-20", 12_500], ["2026-10-28", 18_000], ["2026-11-10", 4_000]] as const).map(([d, c]) => ({
+        accountId: "f-chk", postedDate: d, amountCents: -c, merchant: "Transfer to Fidelity SEP IRA", category: "Transfer", isInternalTransfer: true,
+      })),
     ],
     spend: [
       { merchant: "Key Food", category: "Groceries", accountId: "f-chk", minCents: 1_800, maxCents: 6_500, perWeek: 1.4 },

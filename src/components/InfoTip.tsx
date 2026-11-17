@@ -15,8 +15,9 @@ let closeActive: (() => void) | null = null;
  * - Keyboard: appears immediately on focus. Escape closes it.
  * - Touch: tap to toggle.
  */
-export function InfoTip({ term, children, underline = true }: { term: GlossaryKey; children: ReactNode; underline?: boolean }) {
-  const entry = GLOSSARY[term];
+export function InfoTip({ term, tip, children, underline = true }: { term?: GlossaryKey; tip?: { title: string; body: ReactNode }; children: ReactNode; underline?: boolean }) {
+  // A glossary term, or a one-off explanation with numbers worked out for this person.
+  const entry = tip ?? GLOSSARY[term!];
   const id = useId();
   const [open, setOpen] = useState(false);
   const [place, setPlace] = useState<{ above: boolean; alignRight: boolean }>({ above: false, alignRight: false });

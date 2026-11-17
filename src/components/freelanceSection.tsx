@@ -17,6 +17,7 @@ const LEG_COLOR: Record<SplitLeg["kind"], { bar: string; chip: string }> = {
   keep: { bar: "bg-[#c9bfae]", chip: "bg-[#f6f1e9] ring-line" },
   buffer: { bar: "bg-band", chip: "bg-accent-soft ring-accent/25" },
   retirement: { bar: "bg-[#b9c1e3]", chip: "bg-[#eef0f7] ring-[#c9cfe6]" },
+  goals: { bar: "bg-[#e9bfcd]", chip: "bg-[#fbf0f4] ring-[#efd3dd]" },
   spend: { bar: "bg-accent", chip: "bg-surface ring-accent/40" },
 };
 
@@ -24,7 +25,8 @@ const LEG_COLOR: Record<SplitLeg["kind"], { bar: string; chip: string }> = {
 
 function TaxBody({ p, f, onEdit }: { p: Profile; f: Forecast; onEdit?: () => void }) {
   if (!p.tax || !f.tax) return null;
-  const gap = f.tax.amount - f.tax.setAside;
+  const ready = f.tax.setAside + f.tax.plannedSetAside;
+  const gap = f.tax.amount - ready;
   return (
     <div>
       <div className="flex items-start justify-between gap-2">
@@ -34,10 +36,12 @@ function TaxBody({ p, f, onEdit }: { p: Profile; f: Forecast; onEdit?: () => voi
         </div>
         {onEdit && <SmallButton onClick={onEdit} label="Tax settings"><PencilIcon /></SmallButton>}
       </div>
-      <div className="mt-3"><Meter value={f.tax.setAside} max={f.tax.amount} tone={gap > 0 ? "tight" : "accent"} label="Tax set aside against estimate" /></div>
-      <div className="mt-1.5 flex justify-between text-sm">
-        <span className="text-muted">{usd(f.tax.setAside)} set aside</span>
-        <span className="font-bold">{gap > 0 ? `${usd(gap)} to go` : "Covered"}</span>
+      <div className="mt-3"><Meter value={ready} max={f.tax.amount} tone={gap > 0 ? "tight" : "accent"} label="Tax set aside against estimate" /></div>
+      <div className="mt-1.5 flex justify-between gap-2 text-sm">
+        <span className="text-muted">
+          {usd(f.tax.setAside)} saved{f.tax.plannedSetAside > 0 && <> + <InfoTip term="paydayAssumed">{usd(f.tax.plannedSetAside)} from upcoming payments</InfoTip></>}
+        </span>
+        <span className="shrink-0 font-bold">{gap > 0 ? `${usd(gap)} to go` : "Covered"}</span>
       </div>
       <p className="mt-2 text-xs text-muted">Covers income from {p.tax.periodLabel}. <InfoTip term="estimatedTax">What is this?</InfoTip></p>
     </div>
@@ -54,7 +58,7 @@ function PayBody({ p }: { p: Profile }) {
         <span className="tabular text-3xl font-extrabold">{usd(s.paycheckCents)}</span>
         <span className="text-sm text-muted">every 2 weeks</span>
       </div>
-      <p className="mt-1 text-sm text-muted">{usd(s.weeklyCents)}/week for everyday spending, after bills, taxes and savings.</p>
+      <p className="mt-1 text-sm text-muted">{usd(s.weeklyCents)}/week for everyday spending, after bills and the <InfoTip term="paydayAssumed">Payday Plan</InfoTip>.</p>
       <p className={`mt-2 text-sm font-bold ${over ? "text-warn" : "text-accent-strong"}`}>
         {over ? `You usually spend ${usd(s.currentWeeklyCents)}/week: ${usd(s.currentWeeklyCents - s.weeklyCents)} over.` : `You usually spend ${usd(s.currentWeeklyCents)}/week: within it.`}
       </p>
@@ -89,7 +93,7 @@ function SplitBar({ w }: { w: WindfallSplit }) {
             <span key={l.kind} className={`${LEG_COLOR[l.kind].bar} border-r-2 border-surface last:border-r-0`} style={{ width: `${(l.amountCents / w.amountCents) * 100}%` }} />
           ))}
         </div>
-        <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        <ul className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fit,minmax(130px,1fr))]">
           {w.legs.map((l) => (
             <li key={l.kind} className={`rounded-xl px-3 py-2 ring-1 ${LEG_COLOR[l.kind].chip}`}>
               <div className="text-[11px] font-bold text-muted">{l.label}</div>
@@ -106,7 +110,7 @@ function SplitBar({ w }: { w: WindfallSplit }) {
 function SplitFoot({ p, w }: { p: Profile; w: WindfallSplit }) {
   return (
     <p className="mt-3 text-xs text-muted">
-      <strong className="text-tight">Taxes first:</strong> {p.tax?.setAsidePct}% of every untaxed payment.{w.note ? ` ${w.note}` : ""}
+      <strong className="text-tight">Taxes first:</strong> {p.tax?.setAsidePct}% of every untaxed payment.{w.note ? ` ${w.note}` : ""} The forecast assumes you follow this plan.
     </p>
   );
 }

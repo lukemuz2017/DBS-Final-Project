@@ -5,13 +5,13 @@ import { DEMO_PROFILES, getDemoProfile } from "@/lib/demo";
 
 export const metadata = { title: "Runway · Dashboard" };
 
-// Three demo personas, so every dashboard is prerendered at build time.
+// The demo personas, so every dashboard is prerendered at build time.
 export function generateStaticParams() {
   return DEMO_PROFILES.map((p) => ({ persona: p.slug }));
 }
 
 // Params are read inside <Suspense> so switching personas can show the shell
-// instantly (Next 16 partial prefetching). All three are prerendered anyway.
+// instantly (Next 16 partial prefetching). All of them are prerendered anyway.
 export default function Dashboard({ params }: PageProps<"/dashboard/[persona]">) {
   return (
     <Suspense fallback={<DashboardLoading />}>

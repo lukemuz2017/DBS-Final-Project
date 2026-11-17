@@ -14,6 +14,11 @@
 //            bills and spending at the low end.
 // - Spending uncertainty grows with the square root of time, so the range widens
 //   the further out you look.
+// - With tax tracking on, the forecast assumes you follow the Payday Plan's first
+//   step: a share of every untaxed payment moves to tax savings the day it lands.
+//   The rest of the plan (buffer, retirement, goals) comes in through `extra`
+//   (see forecastWithPlan in plan.ts). Those events carry fromPlan, so the UI can
+//   say which numbers assume the plan is followed.
 
 import { addDays, ceilHundred, daysBetween, fmtDate, fmtRange, toDate, toISO, usd } from "../format";
 import type { Confidence, Profile } from "../types";
@@ -39,6 +44,10 @@ export interface CashEvent {
   /** Tax payments only, checking view: the part paid from the earmarked tax savings account. */
   earmarkedCents?: number;
   essential?: boolean;
+  /** A Payday Plan move (tax set-aside, buffer, retirement, goals): assumed, not scheduled. */
+  fromPlan?: boolean;
+  /** Plan moves: the account the money goes to. */
+  toAccountId?: string;
 }
 
 export interface WeekResult {
@@ -114,8 +123,11 @@ export interface Forecast {
   windows: WindowResult[];
   lowest: { base: number; baseDate: string; low: number; lowDate: string };
   runway: { weeks: number; weeklyBurn: number; liquid: number; target: number };
-  tax?: { amount: number; dueDate: string; setAside: number; covered: boolean };
+  /** setAside is in tax savings today; plannedSetAside is what the Payday Plan adds before the due date. */
+  tax?: { amount: number; dueDate: string; setAside: number; plannedSetAside: number; covered: boolean };
   cushion: number;
+  /** True when some numbers assume the Payday Plan is followed. */
+  followsPlan: boolean;
 }
 
 const Z = { 80: 1.2816, 90: 1.6449 } as const;
@@ -199,6 +211,7 @@ function buildEvents(p: Profile, from: string, to: string): { events: CashEvent[
         },
         included: { low: true, base: true, high: true },
         toReserve: isTransfer,
+        toAccountId: b.toAccountId,
         essential: b.essential,
       });
     }
@@ -239,6 +252,28 @@ function buildEvents(p: Profile, from: string, to: string): { events: CashEvent[
     });
   }
 
+  // Payday Plan, step one: set aside tax from every untaxed payment, the day it lands.
+  if (p.tax?.reserveAccountId) {
+    const pct = p.tax.setAsidePct;
+    const untaxed = new Set(p.incomeStreams.filter((s) => !s.taxWithheld).map((s) => s.id));
+    const acct = p.accounts.find((a) => a.id === p.tax!.reserveAccountId);
+    for (const inc of events.filter((e) => e.kind === "income" && untaxed.has(e.sourceId))) {
+      const share = (c: Case) => -Math.round((inc.amount[c] * pct) / 100 / 1000) * 1000;
+      events.push({
+        id: `setaside-${inc.id}`,
+        sourceId: "tax",
+        kind: "transfer",
+        label: `Tax set-aside → ${acct ? `${acct.institution} ${acct.name}` : "tax savings"}`,
+        date: { ...inc.date },
+        amount: { low: share("low"), base: share("base"), high: share("high") },
+        included: { low: inc.included.low && inRange(inc.date.low), base: inc.included.base && inRange(inc.date.base), high: inc.included.high && inRange(inc.date.high) },
+        toReserve: true,
+        toAccountId: p.tax.reserveAccountId,
+        fromPlan: true,
+      });
+    }
+  }
+
   return { events, taxAmount };
 }
 
@@ -254,7 +289,8 @@ function simulate(p: Profile, events: CashEvent[], c: Case, start: number, z: nu
     const i = daysBetween(p.today, e.date[c]);
     if (i < 1 || i > days) continue;
     delta[i] += e.amount[c] + (e.earmarkedCents ?? 0);
-    if (e.toReserve) reserveDelta[i] -= e.amount[c];
+    // Savings that could cover a dip later; tax set-asides are owed, so they don't count.
+    if (e.toReserve && e.toAccountId !== p.tax?.reserveAccountId) reserveDelta[i] -= e.amount[c];
   }
   const daily = p.spending.weeklyMeanCents / 7;
   const bal: number[] = [start];
@@ -311,12 +347,23 @@ function explain(events: CashEvent[], minDate: string): Reasons {
 // ---------------------------------------------------------------------------
 // 4. Put it together.
 
-export function forecast(p: Profile, opts: { scope?: Scope } = {}): Forecast {
+/** Savings that can cover a dip, in the order to draw on them: emergency fund first, goal savings last, tax savings never. */
+export function coverOrder(p: Profile) {
+  const rank = (a: Profile["accounts"][number]) => (a.purpose === "emergency" ? 0 : a.purpose === "goals" ? 2 : 1);
+  return p.accounts
+    .filter((a) => a.tier === "reserve" && a.id !== p.tax?.reserveAccountId)
+    .sort((a, b) => rank(a) - rank(b) || b.balanceCents - a.balanceCents);
+}
+
+export function forecast(p: Profile, opts: { scope?: Scope; extra?: CashEvent[] } = {}): Forecast {
   const scope: Scope = opts.scope ?? "checking";
   const z = Z[p.rangeConfidence];
   const from = addDays(p.today, 1);
   const to = addDays(p.today, HORIZON_DAYS);
-  const { events, taxAmount } = buildEvents(p, from, to);
+  const built = buildEvents(p, from, to);
+  const taxAmount = built.taxAmount;
+  // Copies, so the tax earmark below never writes into the caller's extra events.
+  const events = [...built.events, ...(opts.extra ?? []).map((e) => ({ ...e }))];
 
   const operatingToday = p.accounts.filter((a) => a.tier === "operating").reduce((s, a) => s + a.balanceCents, 0);
   const reserveAccounts = p.accounts.filter((a) => a.tier === "reserve").map((a) => ({ id: a.id, name: `${a.institution} ${a.name}`, balance: a.balanceCents }));
@@ -324,25 +371,31 @@ export function forecast(p: Profile, opts: { scope?: Scope } = {}): Forecast {
   const op = p.accounts.find((a) => a.tier === "operating");
   const operatingName = op ? `${op.institution} ${op.name}` : "checking";
 
-  // Tax savings is earmarked: in the checking view, estimated tax is paid from it
-  // first, and it is never offered to cover other bills. (In the checking + savings
-  // view the whole payment leaves cash, so nothing changes there.)
+  // Tax savings is earmarked: estimated tax is paid from it first (in both views),
+  // and it is never offered to cover other bills or counted as spendable cash.
   const taxAccountId = p.tax?.reserveAccountId;
-  if (scope === "checking" && taxAccountId) {
-    let earmark = p.accounts.find((a) => a.id === taxAccountId)?.balanceCents ?? 0;
+  // Tax savings grows with each set-aside, so a bill can use what lands before it.
+  const setAsides = events.filter((e) => e.toAccountId === taxAccountId && e.toReserve && e.included.base);
+  const setAsideBefore = (date: string) => setAsides.filter((e) => e.date.base < date).reduce((s, e) => s - e.amount.base, 0);
+  if (taxAccountId) {
+    let used = 0;
     for (const e of events.filter((x) => x.kind === "tax").sort((a, b) => (a.date.base < b.date.base ? -1 : 1))) {
-      const fromSavings = Math.max(0, Math.min(earmark, -e.amount.base));
+      const available = (p.accounts.find((a) => a.id === taxAccountId)?.balanceCents ?? 0) + setAsideBefore(e.date.base) - used;
+      const fromSavings = Math.max(0, Math.min(available, -e.amount.base));
       if (fromSavings > 0) e.earmarkedCents = fromSavings;
-      earmark -= fromSavings;
+      used += fromSavings;
     }
   }
-  const coverAccounts = reserveAccounts.filter((a) => a.id !== taxAccountId);
+  const order = coverOrder(p).map((a) => a.id);
+  const coverAccounts = reserveAccounts.filter((a) => a.id !== taxAccountId).sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
   const coverToday = coverAccounts.reduce((s, a) => s + a.balance, 0);
 
   // In the "cash" scope savings are part of the balance, so transfers into savings move
   // money between two counted accounts and are left out of the simulation.
-  const startBalance = scope === "cash" ? operatingToday + reserveToday : operatingToday;
-  const simEvents = scope === "cash" ? events.filter((e) => !e.toReserve) : events;
+  // "Checking + savings" never counts tax savings: that money is owed. So set-asides
+  // leave spendable cash, and tax bills are paid from tax savings first in both views.
+  const startBalance = scope === "cash" ? operatingToday + coverToday : operatingToday;
+  const simEvents = scope === "cash" ? events.filter((e) => !(e.toReserve && e.toAccountId !== taxAccountId)) : events;
   // Savings still outside the tracked balance, available to cover a dip (not tax savings).
   const outsideReserve = scope === "cash" ? 0 : coverToday;
   const sims = {
@@ -424,11 +477,11 @@ export function forecast(p: Profile, opts: { scope?: Scope } = {}): Forecast {
       if (status === "short" && coverAccounts.length > 0) {
         const amount = Math.min(ceilHundred(-worst.low + 20_000), coverToday);
         const by = addDays(firstDip.lowMinDate, -3) > p.today ? addDays(firstDip.lowMinDate, -3) : addDays(p.today, 1);
-        // Draw from the largest savings account first, then the next.
+        // Draw from the emergency fund first, then other savings, goal savings last.
         const parts: string[] = [];
         const legs: NonNullable<Fix["legs"]> = [];
         let left = amount;
-        for (const r of [...coverAccounts].sort((x, y) => y.balance - x.balance)) {
+        for (const r of coverAccounts) {
           if (left <= 0) break;
           const take = Math.min(left, Math.floor(r.balance / 10_000) * 10_000);
           if (take > 0) { parts.push(`${usd(take)} from ${r.name}`); legs.push({ accountId: r.id, account: r.name, amount: take, balance: r.balance }); left -= take; }
@@ -476,7 +529,8 @@ export function forecast(p: Profile, opts: { scope?: Scope } = {}): Forecast {
   let tax: Forecast["tax"];
   if (p.tax && taxAmount !== undefined) {
     const setAside = p.accounts.find((a) => a.id === p.tax!.reserveAccountId)?.balanceCents ?? 0;
-    tax = { amount: -taxAmount, dueDate: p.tax.dueDate, setAside, covered: setAside >= -taxAmount };
+    const planned = setAsideBefore(p.tax.dueDate);
+    tax = { amount: -taxAmount, dueDate: p.tax.dueDate, setAside, plannedSetAside: planned, covered: setAside + planned >= -taxAmount };
   }
 
   return {
@@ -495,6 +549,7 @@ export function forecast(p: Profile, opts: { scope?: Scope } = {}): Forecast {
     runway: { weeks: weeklyBurn > 0 ? liquid / weeklyBurn : Infinity, weeklyBurn, liquid, target: p.runwayTargetWeeks },
     tax,
     cushion,
+    followsPlan: events.some((e) => e.fromPlan),
   };
 }
 
