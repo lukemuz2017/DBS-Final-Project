@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { SetupView } from "@/components/SetupView";
+import { DemoSetup } from "@/components/demoViews";
 import { DEMO_PROFILES, getDemoProfile } from "@/lib/demo";
 
 export const metadata = { title: "Runway · Account Details" };
@@ -21,5 +21,5 @@ async function Content({ params }: { params: PageProps<"/dashboard/[persona]/set
   const { persona } = await params;
   const p = getDemoProfile(persona);
   if (!p) notFound();
-  return <SetupView base={p} profiles={DEMO_PROFILES} />;
+  return <DemoSetup base={p} profiles={DEMO_PROFILES} />;
 }

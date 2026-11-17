@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { DashboardView } from "@/components/DashboardView";
+import { DemoDashboard } from "@/components/demoViews";
 import { DEMO_PROFILES, getDemoProfile } from "@/lib/demo";
 
 export const metadata = { title: "Runway · Dashboard" };
@@ -38,5 +38,5 @@ async function DashboardContent({ params }: { params: PageProps<"/dashboard/[per
   if (!p) notFound();
   // The view is a client component: demo edits are kept in the browser and the
   // forecast engine (pure TypeScript) reruns there on every change.
-  return <DashboardView base={p} profiles={DEMO_PROFILES} />;
+  return <DemoDashboard base={p} profiles={DEMO_PROFILES} />;
 }

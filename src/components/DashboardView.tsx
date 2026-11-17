@@ -6,9 +6,9 @@ import { RefundPlanCard, RetirementCard } from "@/components/planCards";
 import { FreelanceSection } from "@/components/freelanceSection";
 import { flaggedRuns, runForWeek, SuggestionsButton, WeekTip } from "@/components/suggestions";
 import { ForecastChart } from "@/components/ForecastChart";
-import { AppHeader } from "@/components/AppHeader";
+import { AppHeader, type Chrome } from "@/components/AppHeader";
 import { InfoTip } from "@/components/InfoTip";
-import { DemoBanner, useEditor } from "@/components/edit/Editor";
+import { useEditor } from "@/components/edit/Editor";
 import { PencilIcon } from "@/components/edit/fields";
 import {
   HeroStats,
@@ -17,18 +17,17 @@ import {
   TermCard,
 } from "@/components/sections";
 import { StatusBadge } from "@/components/ui";
-import { useDemoProfile } from "@/lib/demo/useDemoProfile";
+import type { ProfileStore } from "@/lib/store/types";
 import type { Forecast } from "@/lib/engine/forecast";
 import { forecastWithPlan } from "@/lib/engine/plan";
 import { fmtRange, usd } from "@/lib/format";
-import type { Profile } from "@/lib/types";
 import { hasStaleAccount } from "@/lib/format";
 
 
 
 
-export function DashboardView({ base, profiles }: { base: Profile; profiles: Profile[] }) {
-  const { profile: p, update, reset, edited } = useDemoProfile(base);
+export function DashboardView({ store, chrome }: { store: ProfileStore; chrome: Chrome }) {
+  const { profile: p, update } = store;
   // Everything on the dashboard assumes the Payday Plan is followed (a note says so).
   const f = useMemo(() => forecastWithPlan(p), [p]);
   // Same forecast with savings counted in; transfers between the two cancel out.
@@ -54,14 +53,11 @@ export function DashboardView({ base, profiles }: { base: Profile; profiles: Pro
   const first = p.name.split(" ")[0];
 
   const chartWeeksFor = (fc: Forecast) => fc.weeks.map((w) => ({ index: w.index, label: fmtRange(w.start, w.end), low: w.low, base: w.base, high: w.high, status: w.status }));
-  const switcherProfiles = profiles.map((x) => (x.slug === p.slug ? p : x));
 
 
   return (
     <>
-      <AppHeader profiles={switcherProfiles} active={p.slug} setupAlert={hasStaleAccount(p)} />
-
-      <DemoBanner name={first} edited={edited} onReset={reset} />
+      <AppHeader chrome={chrome} setupAlert={hasStaleAccount(p)} />
 
       <div className="hero-glow border-b border-line">
         <div className="mx-auto max-w-6xl px-4 pb-6 pt-6 sm:px-6">

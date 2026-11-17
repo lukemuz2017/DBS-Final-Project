@@ -1,17 +1,16 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { AppHeader } from "@/components/AppHeader";
-import { DemoBanner, useEditor } from "@/components/edit/Editor";
+import { AppHeader, type Chrome } from "@/components/AppHeader";
+import { useEditor } from "@/components/edit/Editor";
 import { PencilIcon, SmallButton } from "@/components/edit/fields";
 import { AccountsCard, GraduationCard, IncomeCard } from "@/components/sections";
 import { PlansPanel, RecurringBillsPanel } from "@/components/setupPanels";
 import { ActivityList } from "@/components/ActivityView";
 import type { CashEvent } from "@/lib/engine/forecast";
 import { Card } from "@/components/ui";
-import { useDemoProfile } from "@/lib/demo/useDemoProfile";
+import type { ProfileStore } from "@/lib/store/types";
 import { daysBetween, usd } from "@/lib/format";
-import type { Profile } from "@/lib/types";
 import { CLIENTS_PAY, CUSHION, PREDICTABILITY, styleExample } from "@/components/edit/RulesForm";
 import { dismissGap, GapsList } from "@/components/gaps";
 import { InfoTip } from "@/components/InfoTip";
@@ -23,12 +22,10 @@ type Section = "profile" | "rules" | "accounts" | "income" | "bills" | "plans" |
 
 // Account details: the facts the forecast is built from. A fixed menu on the
 // left picks which section shows on the right.
-export function SetupView({ base, profiles }: { base: Profile; profiles: Profile[] }) {
-  const { profile: p, update, reset, edited } = useDemoProfile(base);
+export function SetupView({ store, chrome }: { store: ProfileStore; chrome: Chrome }) {
+  const { profile: p, update } = store;
   const { edit, drawerNode } = useEditor(p, update);
   const [section, setSection] = useState<Section | null>(null);
-  const first = p.name.split(" ")[0];
-  const switcherProfiles = profiles.map((x) => (x.slug === p.slug ? p : x));
 
   const stale = p.accounts.filter((a) => daysBetween(a.balanceAsOf.slice(0, 10), p.today) >= 3).length;
   const menu: { id: Section; label: string; icon: ReactNode; alert?: boolean }[] = [
@@ -156,8 +153,7 @@ export function SetupView({ base, profiles }: { base: Profile; profiles: Profile
 
   return (
     <>
-      <AppHeader profiles={switcherProfiles} active={p.slug} section="setup" setupAlert={stale > 0} />
-      <DemoBanner name={first} edited={edited} onReset={reset} />
+      <AppHeader chrome={chrome} section="setup" setupAlert={stale > 0} />
 
       <div className="hero-glow border-b border-line">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6">
