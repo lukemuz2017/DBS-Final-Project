@@ -28,7 +28,7 @@ export const student: Profile = {
     { id: "s-roth", institution: "Fidelity", name: "Roth IRA", mask: "3306", type: "investment", tier: "long_term", balanceCents: 3_120_000, balanceAsOf: "2026-11-12T22:00:00Z" },
     { id: "s-fed", institution: "MOHELA", name: "Federal Direct Unsubsidized loan", mask: "2210", type: "loan", tier: "excluded", balanceCents: -683_300, balanceAsOf: "2026-11-12T22:00:00Z" },
     { id: "s-priv", institution: "Sallie Mae", name: "Private graduate loan", mask: "8846", type: "loan", tier: "excluded", balanceCents: -3_526_700, balanceAsOf: "2026-11-12T22:00:00Z" },
-    { id: "s-card", institution: "Chase", name: "Sapphire Preferred", mask: "7710", type: "credit_card", tier: "excluded", balanceCents: -124_000, balanceAsOf: "2026-11-13T07:12:00Z" },
+    { id: "s-card", institution: "Chase", name: "Sapphire Preferred", mask: "7710", type: "credit_card", tier: "excluded", balanceCents: -124_000, balanceAsOf: "2026-11-13T07:12:00Z", paymentDueDay: 24, paysInFull: true },
   ],
 
   incomeStreams: [
@@ -72,7 +72,6 @@ export const student: Profile = {
     { id: "s-verizon", name: "Verizon", category: "utilities", cadence: "monthly", dayOfMonth: 14, amountCents: -6_500, amountSpreadCents: 0, essential: true },
     { id: "s-comed", name: "ComEd electric", category: "utilities", cadence: "monthly", dayOfMonth: 18, amountCents: -6_500, amountSpreadCents: 1_500, essential: true },
     { id: "s-gas", name: "Peoples Gas", category: "utilities", cadence: "monthly", dayOfMonth: 22, amountCents: -8_500, amountSpreadCents: 3_000, essential: true },
-    { id: "s-cardpay", name: "Chase Sapphire payment", category: "card_payment", cadence: "monthly", dayOfMonth: 24, amountCents: -95_000, amountSpreadCents: 25_000, essential: true },
   ],
 
   plannedEvents: [
@@ -82,7 +81,8 @@ export const student: Profile = {
     { id: "s-books", name: "Winter-quarter case packs", kind: "purchase", amountCents: -18_000, dueDate: "2027-01-06" },
   ],
 
-  spending: { weeklyMeanCents: 12_000, weeklySdCents: 6_000 },
+  // Everything she buys, debit or Sapphire (about $950/month goes on the card).
+  spending: { weeklyMeanCents: 34_000, weeklySdCents: 9_000 },
 
   goals: [
     { id: "s-g1", name: "Cushion for the summer internship gap", kind: "emergency_fund", targetCents: 400_000, targetDate: "2027-06-15", savedCents: 0, monthlyContributionCents: 60_000 },

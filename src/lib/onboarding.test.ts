@@ -67,6 +67,24 @@ describe("first-time setup", () => {
     expect(p.incomeStreams[0].payments.slice(0, 3).map((x) => x.expectedDate)).toEqual(["2026-11-20", "2026-12-04", "2026-12-18"]);
   });
 
+  it("pays a paid-in-full card on its due date, and turns a carried balance into a monthly paydown", () => {
+    const inFull = buildProfile({ ...freelance, accounts: freelance.accounts.map((a) => (a.kind === "credit_card" ? { ...a, dueDay: 15 } : a)) }, "2026-11-17");
+    expect(inFull.accounts[2]).toMatchObject({ type: "credit_card", balanceCents: -40_000, paymentDueDay: 15, paysInFull: true });
+    // What's owed ($400) leaves checking on Dec 15.
+    const pay = forecastWithPlan(inFull).events.find((e) => e.sourceId === "a3")!;
+    expect(pay).toMatchObject({ date: { base: "2026-12-15" } });
+    expect(pay.amount.base).toBe(-40_000);
+
+    const carried = buildProfile({ ...freelance, accounts: freelance.accounts.map((a) => (a.kind === "credit_card" ? { ...a, dueDay: 15, paysInFull: false, paydownCents: 10_000 } : a)) }, "2026-11-17");
+    expect(carried.recurringBills.find((b) => b.id === "paydown-a3")).toMatchObject({ category: "debt", dayOfMonth: 15, amountCents: -10_000 });
+    expect(forecastWithPlan(carried).events.some((e) => e.sourceId === "a3")).toBe(false);
+  });
+
+  it("never creates a card-payment bill (card purchases are everyday spending)", () => {
+    const p = buildProfile({ ...freelance, bills: [...freelance.bills, { id: "b3", name: "Amex", amountCents: 70_000, dayOfMonth: 20, category: "card_payment" }] }, "2026-11-17");
+    expect(p.recurringBills.map((b) => b.id)).toEqual(["b1", "b2"]);
+  });
+
   it("widens the range for feast-or-famine income", () => {
     expect(buildProfile({ ...freelance, predictability: "feast_famine" }, "2026-11-17").rangeConfidence).toBe(90);
   });

@@ -44,7 +44,7 @@ export const GLOSSARY = {
   },
   otherExpenses: {
     title: "Other expenses (est.)",
-    body: "Everything that isn't a scheduled bill or plan: groceries, coffee, rides, and other day-to-day spending. It's this week's total, estimated from your recent spending, and runs higher in the low case.",
+    body: "Everything you buy that isn't a scheduled bill or plan, whether you pay by debit or credit card: groceries, coffee, rides and other day-to-day spending. Card payments aren't counted again: they just move money to the card. It's this week's total, estimated from your recent spending, and runs higher in the low case.",
   },
   payYourself: {
     title: "Pay yourself",

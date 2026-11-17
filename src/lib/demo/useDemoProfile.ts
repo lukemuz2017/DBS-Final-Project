@@ -7,7 +7,7 @@
 import { useCallback, useMemo, useSyncExternalStore } from "react";
 import type { Profile } from "../types";
 
-const VERSION = "v5"; // bump when the demo data shape changes, so old saved edits are ignored
+const VERSION = "v6"; // bump when the demo data shape changes, so old saved edits are ignored
 const key = (slug: string) => `runway-demo-${VERSION}:${slug}`;
 
 const memory = new Map<string, string | null>();

@@ -164,6 +164,18 @@ function expandBillDates(
   return dates;
 }
 
+/** Next occurrence of a monthly due day after today (a card with no due day: in 3 weeks). */
+export function nextDueDate(today: string, day?: number): string {
+  if (!day) return addDays(today, 21);
+  const t = toDate(today);
+  for (let m = 0; m < 2; m++) {
+    const lastDay = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + m + 1, 0)).getUTCDate();
+    const d = toISO(new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + m, Math.min(day, lastDay))));
+    if (d > today) return d;
+  }
+  return addDays(today, 30);
+}
+
 function buildEvents(p: Profile, from: string, to: string): { events: CashEvent[]; taxAmount?: number } {
   const events: CashEvent[] = [];
   const inRange = (d: string) => d >= from && d <= to;
@@ -196,7 +208,29 @@ function buildEvents(p: Profile, from: string, to: string): { events: CashEvent[
     });
   }
 
+  // Cards: purchases are part of everyday spending, and a card payment from checking is a
+  // transfer, not spending. So what you owe today (past purchases) becomes one payment on
+  // the due date, for cards paid in full. Old-style "card payment" bills would count the
+  // same money twice, so they're skipped whenever a credit card account is set up.
+  const cards = p.accounts.filter((a) => a.type === "credit_card");
+  for (const c of cards) {
+    if (c.paysInFull === false || c.balanceCents >= 0) continue;
+    const due = nextDueDate(p.today, c.paymentDueDay);
+    if (!inRange(due)) continue;
+    events.push({
+      id: `card-${c.id}`,
+      sourceId: c.id,
+      kind: "planned",
+      label: `${c.institution} ${c.name} payment (balance owed)`,
+      date: { low: due, base: due, high: due },
+      amount: { low: c.balanceCents, base: c.balanceCents, high: c.balanceCents },
+      included: { low: true, base: true, high: true },
+      essential: true,
+    });
+  }
+
   for (const b of p.recurringBills) {
+    if (b.category === "card_payment" && cards.length > 0) continue;
     for (const d of expandBillDates(b, from, to)) {
       const isTransfer = Boolean(b.toAccountId);
       events.push({

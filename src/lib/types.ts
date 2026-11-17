@@ -18,6 +18,14 @@ export interface Account {
   balanceAsOf: string; // ISO timestamp
   /** Savings only: what the account is for. Tax savings is set in the tax settings instead. */
   purpose?: "emergency" | "goals";
+  /** Credit cards: day of the month the payment is due. */
+  paymentDueDay?: number;
+  /**
+   * Credit cards: true (default) if you pay the full balance each month, so what you owe
+   * today is one payment out of checking on the due date. False if you carry a balance:
+   * add your extra paydown as a monthly "Loan payment" bill instead.
+   */
+  paysInFull?: boolean;
   connectedAt?: string; // set when added through the (demo) connect flow
 }
 
@@ -88,6 +96,8 @@ export interface Transaction {
   category: string;
   isInternalTransfer?: boolean;
   incomeStreamId?: string;
+  /** Set when the transaction is a recurring bill (rent, phone): bills are forecast separately. */
+  recurringBillId?: string;
 }
 
 export interface TaxSetup {

@@ -28,7 +28,7 @@ export const freelance: Profile = {
     { id: "f-goals", institution: "Ally", name: "Goals savings", mask: "8851", type: "savings", tier: "reserve", purpose: "goals", balanceCents: 0, balanceAsOf: "2026-11-09T05:30:00Z" },
     { id: "f-sep", institution: "Fidelity", name: "SEP IRA", mask: "7140", type: "investment", tier: "long_term", balanceCents: 1_460_000, balanceAsOf: "2026-11-12T22:00:00Z" },
     { id: "f-bh", institution: "B&H Payboo", name: "Gear financing", mask: "6620", type: "loan", tier: "excluded", balanceCents: -189_000, balanceAsOf: "2026-11-12T22:00:00Z" },
-    { id: "f-card", institution: "Amex", name: "Blue Business Cash", mask: "1007", type: "credit_card", tier: "excluded", balanceCents: -88_000, balanceAsOf: "2026-11-13T08:02:00Z" },
+    { id: "f-card", institution: "Amex", name: "Blue Business Cash", mask: "1007", type: "credit_card", tier: "excluded", balanceCents: -88_000, balanceAsOf: "2026-11-13T08:02:00Z", paymentDueDay: 22, paysInFull: true },
   ],
 
   incomeStreams: [
@@ -132,7 +132,6 @@ export const freelance: Profile = {
     { id: "f-coned", name: "Con Edison", category: "utilities", cadence: "monthly", dayOfMonth: 16, amountCents: -9_500, amountSpreadCents: 2_000, essential: true },
     { id: "f-pixieset", name: "Pixieset + website", category: "business", cadence: "monthly", dayOfMonth: 18, amountCents: -2_600, amountSpreadCents: 0, essential: false },
     { id: "f-visible", name: "Visible phone", category: "utilities", cadence: "monthly", dayOfMonth: 20, amountCents: -4_500, amountSpreadCents: 0, essential: true },
-    { id: "f-amex", name: "Amex payment", category: "card_payment", cadence: "monthly", dayOfMonth: 22, amountCents: -75_000, amountSpreadCents: 15_000, essential: true },
   ],
 
   plannedEvents: [
@@ -140,7 +139,8 @@ export const freelance: Profile = {
     { id: "f-flight", name: "Flights home to Phoenix", kind: "travel", amountCents: -42_000, dueDate: "2026-12-20" },
   ],
 
-  spending: { weeklyMeanCents: 15_000, weeklySdCents: 7_000 },
+  // Everything he buys, debit or Amex (about $750/month goes on the card).
+  spending: { weeklyMeanCents: 32_000, weeklySdCents: 10_000 },
 
   tax: {
     setAsidePct: 30,
@@ -184,7 +184,7 @@ export const freelance: Profile = {
     ],
   },
   birthYear: 1992,
-  rules: { savingsStyle: "balanced", predictability: "lumpy", clientsPay: "1_2_weeks_late", cushionWeeks: 1, minWeeklySpendCents: 10_000 },
+  rules: { savingsStyle: "balanced", predictability: "lumpy", clientsPay: "1_2_weeks_late", cushionWeeks: 1, minWeeklySpendCents: 25_000 },
 
   history: [
     { label: "Went full-time freelance", date: "2023-03-01" },

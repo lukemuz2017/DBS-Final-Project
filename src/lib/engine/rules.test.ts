@@ -94,16 +94,17 @@ describe("money rules", () => {
   });
 
   it("pauses Push hard when it would cut everyday spending below the user's minimum", () => {
-    // Jordan on Push hard: the bigger retirement and goal moves would leave about $50/week
-    // for everyday spending, under his $100 minimum, so the plan falls back to Balanced.
+    // Jordan on Push hard: the bigger retirement and goal moves would leave about $230/week
+    // for everyday spending (card purchases included), under his $250 minimum, so the plan
+    // falls back to Balanced.
     const jordan = ALL_DEMO_PROFILES.find((x) => x.slug === "freelance")!;
     const push = { ...jordan, rules: { ...jordan.rules, savingsStyle: "push" as const } };
     expect(paydayPlan(push).rules).toMatchObject({ pushPaused: true, applied: "balanced", pausedBy: { reason: "necessities" } });
-    expect(safePay(push).weeklyCents).toBeGreaterThanOrEqual(10_000);
-    // Without a minimum, Push hard stays on, and Pay yourself drops below $100.
+    expect(safePay(push).weeklyCents).toBeGreaterThanOrEqual(25_000);
+    // Without a minimum, Push hard stays on, and Pay yourself drops below $250.
     const noMin = { ...push, rules: { ...push.rules, minWeeklySpendCents: 0 } };
     expect(paydayPlan(noMin).rules.pushPaused).toBe(false);
-    expect(safePay(noMin).weeklyCents).toBeLessThan(10_000);
+    expect(safePay(noMin).weeklyCents).toBeLessThan(25_000);
   });
 
   it("turns predictability into defaults for new income", () => {

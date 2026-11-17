@@ -313,7 +313,6 @@ const BILL_CATEGORIES: { value: RecurringBill["category"]; label: string }[] = [
   { value: "insurance", label: "Insurance" },
   { value: "health", label: "Health" },
   { value: "debt", label: "Loan / debt payment" },
-  { value: "card_payment", label: "Credit card payment" },
   { value: "transport", label: "Transport" },
   { value: "subscriptions", label: "Subscriptions" },
   { value: "business", label: "Business costs" },
@@ -548,6 +547,9 @@ export function AccountForm({ account, isTax, onSave, onDelete, onCancel }: Done
   const [name, setName] = useState(account.name);
   const [tier, setTier] = useState<Tier>(account.tier);
   const [purpose, setPurpose] = useState<"" | "emergency" | "goals">(account.purpose ?? "");
+  const [dueDay, setDueDay] = useState(account.paymentDueDay ? String(account.paymentDueDay) : "");
+  const [paysInFull, setPaysInFull] = useState(account.paysInFull !== false);
+  const isCard = account.type === "credit_card";
   const [balance, setBalance] = useState((account.balanceCents < 0 ? "-" : "") + centsToInput(account.balanceCents));
   const [error, setError] = useState("");
   const [confirming, setConfirming] = useState(false);
@@ -557,7 +559,16 @@ export function AccountForm({ account, isTax, onSave, onDelete, onCancel }: Done
     const b = parseDollars(balance);
     if (!name.trim()) return setError("Give the account a name.");
     if (b === null) return setError("Balance should be a dollar amount.");
-    onSave({ ...account, name: name.trim(), tier, balanceCents: b, purpose: tier === "reserve" && !isTax && purpose ? purpose : undefined });
+    const day = Number(dueDay);
+    if (isCard && dueDay && (!Number.isInteger(day) || day < 1 || day > 31)) return setError("Due day should be a day of the month (1–31).");
+    onSave({
+      ...account,
+      name: name.trim(),
+      tier,
+      balanceCents: b,
+      purpose: tier === "reserve" && !isTax && purpose ? purpose : undefined,
+      ...(isCard ? { paymentDueDay: dueDay ? day : undefined, paysInFull } : {}),
+    });
   }
 
   return (
@@ -575,6 +586,16 @@ export function AccountForm({ account, isTax, onSave, onDelete, onCancel }: Done
           ))}
         </div>
       </div>
+      {isCard && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Payment due day" hint="Day of the month the card payment is due.">
+            {(id) => <input id={id} className={inputCls} inputMode="numeric" value={dueDay} placeholder="22" onChange={(e) => setDueDay(e.target.value.replace(/\D/g, "").slice(0, 2))} />}
+          </Field>
+          <Field label="Do you pay it off every month?" hint={paysInFull ? "What you owe now is paid from checking on the due date." : "Add what you pay down each month as a recurring Loan payment."}>
+            {() => <Segmented label="Pays in full" value={paysInFull ? "yes" : "no"} onChange={(v) => setPaysInFull(v === "yes")} options={[{ value: "yes", label: "Yes" }, { value: "no", label: "No, I carry a balance" }]} />}
+          </Field>
+        </div>
+      )}
       {tier === "reserve" &&
         (isTax ? (
           <p className="rounded-xl bg-sun-soft px-3 py-2 text-sm">This is your tax savings (set in tax settings). It pays estimated tax and isn&apos;t counted as spendable cash.</p>

@@ -19,6 +19,10 @@ export interface DraftAccount {
   amountCents: number;
   /** Savings only. */
   use?: AccountUse;
+  /** Credit cards only: payment due day, whether it's paid in full, and (if not) the extra paid down each month. */
+  dueDay?: number;
+  paysInFull?: boolean;
+  paydownCents?: number;
 }
 
 export interface DraftPayment {
@@ -87,6 +91,7 @@ export function buildProfile(d: OnboardingDraft, today: string): Profile {
     balanceCents: a.kind === "credit_card" || a.kind === "loan" ? -a.amountCents : a.amountCents,
     balanceAsOf: `${today}T12:00:00Z`,
     purpose: a.kind === "savings" && (a.use === "emergency" || a.use === "goals") ? a.use : undefined,
+    ...(a.kind === "credit_card" ? { paymentDueDay: a.dueDay || undefined, paysInFull: a.paysInFull !== false } : {}),
   }));
   const taxAccount = d.accounts.find((a) => a.kind === "savings" && a.use === "taxes");
 
@@ -135,17 +140,32 @@ export function buildProfile(d: OnboardingDraft, today: string): Profile {
   }
 
   const recurringBills: RecurringBill[] = d.bills
-    .filter((b) => b.amountCents > 0 && b.name.trim())
+    .filter((b) => b.amountCents > 0 && b.name.trim() && b.category !== "card_payment")
     .map((b) => ({
       id: b.id,
       name: b.name.trim(),
       category: b.category,
-      cadence: "monthly",
+      cadence: "monthly" as const,
       dayOfMonth: Math.min(31, Math.max(1, Math.round(b.dayOfMonth))),
       amountCents: -b.amountCents,
       amountSpreadCents: 0,
       essential: b.category !== "subscriptions",
     }));
+  // A card carrying a balance: the extra paid down each month is a debt payment from
+  // checking. (Its new purchases are already in everyday spending.)
+  for (const a of d.accounts) {
+    if (a.kind !== "credit_card" || a.paysInFull !== false || !a.paydownCents) continue;
+    recurringBills.push({
+      id: `paydown-${a.id}`,
+      name: `${a.institution.trim() || "Card"} paydown`,
+      category: "debt",
+      cadence: "monthly",
+      dayOfMonth: a.dueDay || 1,
+      amountCents: -a.paydownCents,
+      amountSpreadCents: 0,
+      essential: true,
+    });
+  }
 
   const period = estimatedTaxPeriod(today);
   return {

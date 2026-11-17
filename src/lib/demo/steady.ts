@@ -27,7 +27,7 @@ export const steady: Profile = {
     { id: "o-401k", institution: "Fidelity", name: "401(k)", mask: "9921", type: "investment", tier: "long_term", balanceCents: 290_000, balanceAsOf: "2026-11-12T22:00:00Z" },
     { id: "o-auto", institution: "Honda Financial", name: "Auto loan", mask: "7731", type: "loan", tier: "excluded", balanceCents: -1_480_000, balanceAsOf: "2026-11-12T22:00:00Z" },
     { id: "o-stl", institution: "Nelnet", name: "Federal student loans", mask: "0458", type: "loan", tier: "excluded", balanceCents: -2_260_000, balanceAsOf: "2026-11-12T22:00:00Z" },
-    { id: "o-card", institution: "Capital One", name: "Quicksilver", mask: "5521", type: "credit_card", tier: "excluded", balanceCents: -340_000, balanceAsOf: "2026-11-13T07:45:00Z" },
+    { id: "o-card", institution: "Capital One", name: "Quicksilver", mask: "5521", type: "credit_card", tier: "excluded", balanceCents: -340_000, balanceAsOf: "2026-11-13T07:45:00Z", paymentDueDay: 26, paysInFull: false },
   ],
 
   incomeStreams: [
@@ -70,7 +70,9 @@ export const steady: Profile = {
     { id: "o-tmobile", name: "T-Mobile", category: "utilities", cadence: "monthly", dayOfMonth: 17, amountCents: -5_500, amountSpreadCents: 0, essential: true },
     { id: "o-nelnet", name: "Nelnet student loan", category: "debt", cadence: "monthly", dayOfMonth: 20, amountCents: -29_000, amountSpreadCents: 0, essential: true },
     { id: "o-ladwp", name: "LADWP (water + power)", category: "utilities", cadence: "bimonthly", firstDate: "2026-11-24", dayOfMonth: 24, amountCents: -11_000, amountSpreadCents: 2_500, essential: true },
-    { id: "o-cardpay", name: "Capital One payment", category: "card_payment", cadence: "monthly", dayOfMonth: 26, amountCents: -65_000, amountSpreadCents: 15_000, essential: true },
+    // Carries a balance from the gig years: new card purchases are in everyday spending;
+    // the extra $250 a month paying down the old balance is a debt payment.
+    { id: "o-cardpay", name: "Capital One paydown", category: "debt", cadence: "monthly", dayOfMonth: 26, amountCents: -25_000, amountSpreadCents: 0, essential: true },
     { id: "o-save", name: "Auto-transfer to SoFi Savings", category: "transfer", cadence: "biweekly", firstDate: "2026-11-20", amountCents: -20_000, amountSpreadCents: 0, toAccountId: "o-sav", essential: false },
   ],
 
@@ -80,7 +82,8 @@ export const steady: Profile = {
     { id: "o-dmv", name: "Car registration renewal (DMV)", kind: "other", amountCents: -42_500, dueDate: "2027-01-22" },
   ],
 
-  spending: { weeklyMeanCents: 12_000, weeklySdCents: 5_000 },
+  // Everything he buys, debit or card (about $400/month of new card purchases).
+  spending: { weeklyMeanCents: 21_000, weeklySdCents: 7_000 },
 
   goals: [
     { id: "o-g1", name: "Emergency fund: 4 months of costs", kind: "emergency_fund", targetCents: 1_800_000, targetDate: "2027-09-30", savedCents: 680_000, monthlyContributionCents: 0, accountId: "o-sav" },

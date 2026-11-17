@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { AppHeader, type Chrome } from "@/components/AppHeader";
 import { useEditor } from "@/components/edit/Editor";
 import { PencilIcon, SmallButton } from "@/components/edit/fields";
-import { AccountsCard, GraduationCard, IncomeCard } from "@/components/sections";
+import { AccountsCard, IncomeCard } from "@/components/sections";
 import { PlansPanel, RecurringBillsPanel } from "@/components/setupPanels";
 import { ActivityList } from "@/components/ActivityView";
 import type { CashEvent } from "@/lib/engine/forecast";
@@ -19,7 +19,7 @@ import { rulesOf, STYLES } from "@/lib/engine/rules";
 
 const TYPE_LABEL = { freelance: "Freelance", student: "Student", steady: "Steady paycheck" } as const;
 
-type Section = "profile" | "rules" | "accounts" | "income" | "bills" | "plans" | "upcoming" | "activity" | "journey";
+type Section = "profile" | "rules" | "accounts" | "income" | "bills" | "plans" | "upcoming" | "activity";
 
 // Account details: the facts the forecast is built from. A fixed menu on the
 // left picks which section shows on the right.
@@ -38,7 +38,6 @@ export function SetupView({ store, chrome }: { store: ProfileStore; chrome: Chro
     { id: "plans", label: "One-off plans", icon: <IconCalendar /> },
     { id: "upcoming", label: "Upcoming", icon: <IconClock /> },
     { id: "activity", label: "Recent activity", icon: <IconList /> },
-    ...(p.history?.length ? [{ id: "journey" as const, label: "Your journey", icon: <IconFlag /> }] : []),
   ];
 
   const pick = (id: Section) => setSection(id);
@@ -50,7 +49,8 @@ export function SetupView({ store, chrome }: { store: ProfileStore; chrome: Chro
     else if (e.sourceId === "payday") edit({ kind: "rules" });
     else if (e.kind === "income") edit({ kind: "income", id: e.sourceId });
     else if (e.kind === "bill" || e.kind === "transfer") edit({ kind: "bill", id: e.sourceId });
-    else if (e.sourceId === "tax") edit({ kind: "profile" });
+    // A card's balance-owed payment opens the card.
+    else if (p.accounts.some((a) => a.id === e.sourceId)) edit({ kind: "account", id: e.sourceId });
     else edit({ kind: "event", id: e.sourceId });
   };
 
@@ -147,10 +147,8 @@ export function SetupView({ store, chrome }: { store: ProfileStore; chrome: Chro
     );
   } else if (section === "upcoming") {
     content = <ActivityList p={p} mode="upcoming" onEditItem={editItem} onAdd={(k) => edit({ kind: k })} />;
-  } else if (section === "activity") {
-    content = <ActivityList p={p} mode="transactions" />;
   } else {
-    content = <GraduationCard p={p} />;
+    content = <ActivityList p={p} mode="transactions" />;
   }
 
   return (
@@ -212,4 +210,3 @@ function IconCalendar() { return <Svg><rect x="2.5" y="3.5" width="13" height="1
 function IconClock() { return <Svg><circle cx="9" cy="9" r="6.5" {...S} /><path d="M9 5.5V9l2.5 1.5" {...S} /></Svg>; }
 function IconList() { return <Svg><path d="M6.5 5h8M6.5 9h8M6.5 13h8M3.5 5h.01M3.5 9h.01M3.5 13h.01" {...S} /></Svg>; }
 function IconSliders() { return <Svg><path d="M3 5h7M13 5h2M3 13h2M8 13h7M10 3v4M5 11v4" {...S} /></Svg>; }
-function IconFlag() { return <Svg><path d="M4 16V3M4 3.5h8.5l-1.5 3 1.5 3H4" {...S} /></Svg>; }

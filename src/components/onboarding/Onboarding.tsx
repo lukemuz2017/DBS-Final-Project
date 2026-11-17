@@ -37,7 +37,6 @@ const BILL_CATEGORIES: { value: RecurringBill["category"]; label: string }[] = [
   { value: "insurance", label: "Insurance" },
   { value: "health", label: "Health" },
   { value: "debt", label: "Loan payment" },
-  { value: "card_payment", label: "Card payment" },
   { value: "transport", label: "Car / transit" },
   { value: "business", label: "Business" },
   { value: "subscriptions", label: "Subscriptions" },
@@ -70,7 +69,7 @@ export function Onboarding() {
   const [predictability, setPredictability] = useState<MoneyRules["predictability"]>("lumpy");
   const [clientsPay, setClientsPay] = useState<MoneyRules["clientsPay"]>("on_time");
   // Step 3
-  const [accounts, setAccounts] = useState<Row<DraftAccount>[]>([{ id: newId("acct"), kind: "checking", institution: "", name: "", amount: "" }]);
+  const [accounts, setAccounts] = useState<(Row<DraftAccount> & { paydown?: string })[]>([{ id: newId("acct"), kind: "checking", institution: "", name: "", amount: "" }]);
   const [dismissed, setDismissed] = useState<string[]>([]);
   // Step 4
   const [payments, setPayments] = useState<Row<DraftPayment>[]>([{ id: newId("pay"), client: "", date: addDays(today, 7), amount: "", taxWithheld: false }]);
@@ -94,7 +93,7 @@ export function Onboarding() {
     name, occupation, city, state: usState,
     birthYear: Number(birthYear) || undefined,
     profileType, predictability, clientsPay,
-    accounts: accounts.map(({ amount, ...a }) => ({ ...a, amountCents: cents(amount) })),
+    accounts: accounts.map(({ amount, paydown, ...a }) => ({ ...a, amountCents: cents(amount), paydownCents: paydown ? cents(paydown) : undefined })),
     payments: payments.map(({ amount, ...x }) => ({ ...x, amountCents: cents(amount) })),
     paycheck: { amountCents: cents(paycheck.amount), cadence: paycheck.cadence, next: paycheck.next },
     bills: bills.map(({ amount, ...b }) => ({ ...b, amountCents: cents(amount) })),
@@ -202,6 +201,15 @@ export function Onboarding() {
                     <Field label="Nickname">{(id) => <input id={id} className={inputCls} value={a.name} placeholder="optional" onChange={(e) => upd(setAccounts, a.id, { name: e.target.value })} />}</Field>
                     <Field label={a.kind === "credit_card" || a.kind === "loan" ? "You owe" : "Balance"}>{(id) => <MoneyInput id={id} value={a.amount} onChange={(v) => upd(setAccounts, a.id, { amount: v })} />}</Field>
                   </div>
+                  {a.kind === "credit_card" && (
+                    <div className="mt-3 grid gap-3 sm:grid-cols-[110px_1fr_160px]">
+                      <Field label="Due day">{(id) => <input id={id} className={inputCls} inputMode="numeric" value={a.dueDay ? String(a.dueDay) : ""} placeholder="22" onChange={(e) => upd(setAccounts, a.id, { dueDay: Number(e.target.value.replace(/\D/g, "").slice(0, 2)) || undefined })} />}</Field>
+                      <Field label="Pay it off every month?">
+                        {() => <Segmented label="Pays in full" value={a.paysInFull === false ? "no" : "yes"} onChange={(v) => upd(setAccounts, a.id, { paysInFull: v === "yes" })} options={[{ value: "yes", label: "Yes" }, { value: "no", label: "No, I carry a balance" }]} />}
+                      </Field>
+                      {a.paysInFull === false && <Field label="Extra paid down / month">{(id) => <MoneyInput id={id} value={a.paydown ?? ""} onChange={(v) => upd(setAccounts, a.id, { paydown: v })} />}</Field>}
+                    </div>
+                  )}
                   {a.kind === "savings" && (
                     <div className="mt-3">
                       <Segmented label="Used for" value={a.use ?? "general"} onChange={(v) => upd(setAccounts, a.id, { use: v })} options={profileType === "freelance" ? USES : USES.filter((u) => u.value !== "taxes")} />
@@ -277,7 +285,7 @@ export function Onboarding() {
               </ul>
               {bills.length < 8 && <AddButton onClick={() => setBills((rows) => [...rows, { id: newId("bill"), name: "", amount: "", dayOfMonth: 1, category: "utilities" }])}>Add a bill</AddButton>}
             </Section>
-            <Field label="Everyday spending per week" hint="Groceries, coffee, rides: everything that isn't a bill. A rough guess is fine.">
+            <Field label="Everyday spending per week, including what you put on cards" hint="Groceries, coffee, rides: everything that isn't a bill above. Don't add your card payment as a bill; it would count the same spending twice.">
               {(id) => <MoneyInput id={id} value={weeklySpend} onChange={setWeeklySpend} placeholder="150" />}
             </Field>
           </>

@@ -1,7 +1,7 @@
 "use client";
 
 import type { Forecast } from "@/lib/engine/forecast";
-import { daysBetween, fmtDate, fmtDay, toDate, usd } from "@/lib/format";
+import { daysBetween, fmtDate, fmtDay, usd } from "@/lib/format";
 import type { Profile } from "@/lib/types";
 import { useState } from "react";
 import { PencilIcon, PlusIcon, SmallButton } from "./edit/fields";
@@ -109,7 +109,7 @@ const TIER_TERM = { operating: "spending", reserve: "buffer", long_term: "longTe
 
 const ACCOUNT_GROUPS: { id: string; label: string; types: Profile["accounts"][number]["type"][]; note?: string }[] = [
   { id: "cash", label: "Checking & savings", types: ["checking", "savings"] },
-  { id: "cards", label: "Credit cards", types: ["credit_card"], note: "Not counted as cash. Card spending shows up as your monthly card payment." },
+  { id: "cards", label: "Credit cards", types: ["credit_card"], note: "Not counted as cash. Purchases count as everyday spending; what you owe is paid from checking on the due date." },
   { id: "loans", label: "Loans", types: ["loan"], note: "Not counted as cash. Monthly payments are in Recurring bills." },
   { id: "invest", label: "Investments & retirement", types: ["investment"], note: "Not counted as cash or runway." },
 ];
@@ -141,6 +141,7 @@ export function AccountsCard({ p, onEdit, onConnect }: { p: Profile; onEdit?: (i
                         <div className="font-bold">{a.institution} {a.name} <span className="font-normal text-muted">••{a.mask}</span></div>
                         <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted">
                           {g.id === "cash" && <InfoTip term={TIER_TERM[a.tier]}>{TIER[a.tier]}</InfoTip>}
+                          {a.type === "credit_card" && <span>{a.paysInFull === false ? "Carrying a balance" : "Paid in full"}{a.paymentDueDay ? ` · due the ${ordinal(a.paymentDueDay)}` : ""}</span>}
                           {ageDays >= 3 ? <Chip tone="tight">Last synced {ageDays} days ago</Chip> : a.connectedAt ? <Chip tone="accent">Just connected</Chip> : null}
                         </div>
                       </div>
@@ -221,19 +222,3 @@ export function TermCard({ f }: { f: Forecast }) {
   );
 }
 
-export function GraduationCard({ p }: { p: Profile }) {
-  return (
-    <Card title="From gig work to a steady paycheck" subtitle="Runway switched to the steady view in October">
-      <ol className="relative space-y-3 border-l-2 border-band pl-4 text-sm">
-        {(p.history ?? []).map((h) => (
-          <li key={h.label}>
-            <span className="font-bold">{h.label}</span> <span className="text-muted">· {fmtDate(h.date)} {toDate(h.date).getUTCFullYear()}</span>
-          </li>
-        ))}
-      </ol>
-      <p className="mt-3 rounded-lg bg-accent-soft px-3 py-2 text-xs text-accent-strong">
-        <strong>What changed:</strong> with paychecks every other Friday, the 12-week range is narrow, so goals matter more than the next dip. Side editing work still shows up, but isn&apos;t counted until it&apos;s confirmed.
-      </p>
-    </Card>
-  );
-}
