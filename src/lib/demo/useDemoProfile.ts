@@ -42,8 +42,9 @@ function subscribe(cb: () => void) {
   };
 }
 
-export function useDemoProfile(base: Profile) {
-  const k = key(base.slug);
+/** `variant` keeps separate saved edits, e.g. one per savings style picked in the demo chooser. */
+export function useDemoProfile(base: Profile, variant?: string) {
+  const k = key(variant ? `${base.slug}:${variant}` : base.slug);
   const raw = useSyncExternalStore(
     subscribe,
     () => read(k),

@@ -38,5 +38,5 @@ async function DashboardContent({ params }: { params: PageProps<"/dashboard/[per
   if (!p) notFound();
   // The view is a client component: demo edits are kept in the browser and the
   // forecast engine (pure TypeScript) reruns there on every change.
-  return <DemoDashboard base={p} profiles={DEMO_PROFILES} />;
+  return <DemoDashboard base={p} />;
 }

@@ -21,5 +21,5 @@ async function Content({ params }: { params: PageProps<"/dashboard/[persona]/set
   const { persona } = await params;
   const p = getDemoProfile(persona);
   if (!p) notFound();
-  return <DemoSetup base={p} profiles={DEMO_PROFILES} />;
+  return <DemoSetup base={p} />;
 }
